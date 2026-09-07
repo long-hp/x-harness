@@ -6606,6 +6606,12 @@ importers:
       '@deepseek-ai/dsh-pack':
         specifier: workspace:^
         version: link:../pack
+      '@deepseek-ai/dsh-pack-rules':
+        specifier: workspace:^
+        version: link:../pack-rules
+      '@deepseek-ai/dsh-skill-filesystem':
+        specifier: workspace:^
+        version: link:../../skill/skill-filesystem
       '@types/js-yaml':
         specifier: ^4.0.9
         version: 4.0.9

@@ -28,7 +28,9 @@
   "license": "MIT",
   "peerDependencies": {
     "@deepseek-ai/cordis": "workspace:^",
-    "@deepseek-ai/dsh-pack": "workspace:^"
+    "@deepseek-ai/dsh-pack": "workspace:^",
+    "@deepseek-ai/dsh-pack-rules": "workspace:^",
+    "@deepseek-ai/dsh-skill-filesystem": "workspace:^"
   },
   "dependencies": {
     "@deepseek-ai/schemastery": "workspace:^",
@@ -37,6 +39,8 @@
   "devDependencies": {
     "@deepseek-ai/cordis": "workspace:^",
     "@deepseek-ai/dsh-pack": "workspace:^",
+    "@deepseek-ai/dsh-pack-rules": "workspace:^",
+    "@deepseek-ai/dsh-skill-filesystem": "workspace:^",
     "@types/js-yaml": "^4.0.9"
   }
 }
