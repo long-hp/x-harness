@@ -28,6 +28,8 @@ Status: implemented
 
 `ApiSessionAgentController.composeAgent()` 在尚未发布 Agent 的 `setup` 中、于 preset 挂载之后调用 `ctx.get('packMount')?.mount(agentCtx, cwd)`。不挂载任何 pack 组合行的部署在那里读到 `undefined`，组装方式与此前完全一致。
 
+这些组合行位于 [`dsh-base`](../../../../packages/bundle/base/cordis.patch.yml) 而非浏览器 bundle，因此每个以 base 为底的 profile 都会组装 pack——这正是下文以路径为键的绑定的意义所在。`dsh-pack-local` 扫描 `<dshHome>/packs`。`dsh-pack-rules` 是该 bundle 的依赖却没有自己的行，因为 `dsh-pack-local` 在它生成的组合行中指名了它，而那些行从该 bundle 解析。
+
 ### pack 的内容成为 Cordis 组合行
 
 pack 的内容是异质的——rules 是提示片段，skills 是目录条目，hooks 是 shell 进程，MCP server 是外部连接——而 harness 已经有一种覆盖全部这些的表示：Cordis 插件行。因此 `PackRow` 参照 `agent.cordis.yml` 条目，挂载复用 Loader 自身的 entry 机制，而不是为安装任何东西新增第二套方式。

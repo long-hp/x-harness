@@ -121,6 +121,13 @@ flowchart LR
   svc_skills["ctx.skills<br/>Skill provider registry"]
   pkg_skill_badge["skill-badge"]
   pkg_skill_filesystem["skill-filesystem"]
+  pkg_pack["pack"]
+  svc_packs["ctx.packs<br/>Pack provider registry"]
+  pkg_pack_local["pack-local"]
+  pkg_pack_mount["pack-mount"]
+  pkg_pack_binding["pack-binding"]
+  svc_packBindings["ctx.packBindings<br/>Directory-to-pack bindings"]
+  svc_packMount["ctx.packMount<br/>Pack composition into an agent scope"]
   svc_agents["ctx.agents<br/>Agent service"]
   pkg_acp["acp"]
   pkg_agent_default_model["agent-default-model"]
@@ -277,6 +284,10 @@ flowchart LR
   pkg_lsp --> svc_lsp
   pkg_lsp_stdio --> svc_lsp
   pkg_message_feedback --> svc_messageFeedback
+  pkg_pack --> svc_packs
+  pkg_pack_binding --> svc_packBindings
+  pkg_pack_local --> svc_packs
+  pkg_pack_mount --> svc_packMount
   pkg_permission_presets --> svc_permissionPresets
   pkg_plan_mode --> svc_planMode
   pkg_plugin_package_inventory_deepseek --> svc_deepseekLlmApiExtensions
@@ -382,6 +393,9 @@ flowchart LR
   svc_llm --> pkg_agent_loop
   svc_llm --> pkg_compaction_basic
   svc_lsp --> pkg_tool_lsp
+  svc_packBindings --> pkg_pack_mount
+  svc_packMount --> pkg_api_session_controller
+  svc_packs --> pkg_pack_mount
   svc_sandbox --> pkg_bash_sandbox
   svc_sandbox --> pkg_terminal_bash
   svc_sandboxPolicy --> pkg_bash_sandbox
@@ -511,6 +525,9 @@ flowchart LR
 | `ctx.sessionProjections` | `core` | [`session-projection`](../packages/session/session-projection) | - | [`api-session-controller`](../packages/api/session-controller), [`tool-todo`](../packages/todo/tool-todo), [`session-title`](../packages/session/session-title) | - | 各领域注册由状态驱动的折叠单元；主动驱动过程维护每个会话的水位状态，Session controller 提供 baseline 并推送发生变化的值。 |
 | `ctx.sessionProjectionCache` | `core` | [`session-projection-cache`](../packages/session/session-projection-cache) | - | [`api-session-controller`](../packages/api/session-controller), [`session-query`](../packages/session-query/session-query), [`session-reference`](../packages/context/session-reference), [`subagent`](../packages/subagent/subagent) | - | 按会话持久保存投影单元状态的检查点（节流检查点，以及轮次／结束／分离时的必选检查点），并提供冷读取阶梯：缓存行加持久化尾部回放，因此列表读取永远不需要加载完整日志。 |
 | `ctx.skills` | `seam` | [`skill`](../packages/skill/skill) | [`skill-badge`](../packages/skill/skill-badge), [`skill-filesystem`](../packages/skill/skill-filesystem) | [`tool-skill`](../packages/skill/tool-skill) | - | 合并提供方的 skill（技能）目录；tool-skill 渲染会话前缀目录，并加载完整的 skill 正文。 |
+| `ctx.packs` | `seam` | [`pack`](../packages/pack/pack) | [`pack-local`](../packages/pack/pack-local) | [`pack-mount`](../packages/pack/pack-mount) | - | 合并提供方的 pack 目录并加载一个 pack 的组合行；提供方只列出该安装可见的内容，因此授权从不抵达消费者。 |
+| `ctx.packBindings` | `core` | [`pack-binding`](../packages/pack/pack-binding) | - | [`pack-mount`](../packages/pack/pack-mount) | - | 某个项目目录开启了哪些 pack 的持久记录，以规范路径为键，因此在该目录中开启会话的每个 profile 都以同样方式组装。 |
+| `ctx.packMount` | `core` | [`pack-mount`](../packages/pack/pack-mount) | - | [`api-session-controller`](../packages/api/session-controller) | - | 把一个已绑定 pack 的组合行挂载到单个 Agent scope 之下，这正是把一个项目的 pack 挡在另一个项目会话之外的机制。 |
 | `ctx.agents` | `core` | [`agent`](../packages/core/agent) | - | [`agent-loop`](../packages/core/agent-loop), [`acp`](../packages/acp/acp), [`subagent-in-process-driver`](../packages/subagent/subagent-in-process-driver) | - | 拥有实时 Agent 句柄、创建／恢复工厂 seam，以及进程本地的发起方传播。 |
 | `ctx.agentDefaultModel` | `core` | [`agent-default-model`](../packages/core/agent-default-model) | - | [`api-session-controller`](../packages/api/session-controller), [`headless`](../packages/bundle/headless) | - | 通过 settings 分层默认 `ModelSelection`，让直接入口与 Host 支撑的 Agent 入口共享同一个状态所有者。 |
 | `ctx.agentLoop` | `bundle` | [`agent-loop`](../packages/core/agent-loop) | - | [`base`](../packages/bundle/base), [`sdk-minimal`](../packages/bundle/sdk-minimal) | - | 唯一的具体循环插件；扩展包依赖 dsh-agent 的事件和服务，而不依赖此包。 |

@@ -1131,6 +1131,21 @@ importers:
       '@deepseek-ai/dsh-llm-retry':
         specifier: workspace:^
         version: link:../../llm/llm-retry
+      '@deepseek-ai/dsh-pack':
+        specifier: workspace:^
+        version: link:../../pack/pack
+      '@deepseek-ai/dsh-pack-binding':
+        specifier: workspace:^
+        version: link:../../pack/pack-binding
+      '@deepseek-ai/dsh-pack-local':
+        specifier: workspace:^
+        version: link:../../pack/pack-local
+      '@deepseek-ai/dsh-pack-mount':
+        specifier: workspace:^
+        version: link:../../pack/pack-mount
+      '@deepseek-ai/dsh-pack-rules':
+        specifier: workspace:^
+        version: link:../../pack/pack-rules
       '@deepseek-ai/dsh-permission-presets':
         specifier: workspace:^
         version: link:../../interaction/permission-presets

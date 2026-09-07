@@ -28,6 +28,8 @@ The family splits into five packages, each owning one role:
 
 `ApiSessionAgentController.composeAgent()` calls `ctx.get('packMount')?.mount(agentCtx, cwd)` from the unpublished agent's `setup`, after the preset mounts. A deployment that mounts no pack rows reads `undefined` there and composes exactly as before.
 
+The rows live in [`dsh-base`](../../../../packages/bundle/base/cordis.patch.yml) rather than in the browser bundle, so every base-backed profile composes packs — which is the point of the path-keyed binding below. `dsh-pack-local` scans `<dshHome>/packs`. `dsh-pack-rules` is a dependency of that bundle without a row of its own, because `dsh-pack-local` names it in the rows it generates and those resolve from the bundle.
+
 ### A pack's contents become Cordis rows
 
 A pack's contents are heterogeneous — rules are prompt sections, skills are catalog entries, hooks are shell processes, MCP servers are external connections — and the harness already has one representation covering all of them: a Cordis plugin row. `PackRow` therefore mirrors an `agent.cordis.yml` entry, and the mount reuses the Loader's own entry machinery rather than adding a second way to install anything.

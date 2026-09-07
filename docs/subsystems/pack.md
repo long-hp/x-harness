@@ -74,3 +74,147 @@ This bounds what packaging can protect: a pack whose files sit on the user's own
 - [`dsh-pack-rules`](../../packages/pack/pack-rules/README.md) — the rules Consumer: section naming, ordering, and prompt placement.
 - [`dsh-pack-binding`](../../packages/pack/pack-binding/README.md) — the binding store: path canon, read and write semantics, and durability.
 - [`dsh-pack-mount`](../../packages/pack/pack-mount/README.md) — the mounting step: row namespacing, the scope guarantee, and the activation audit.
+
+<!-- BEGIN GENERATED cordis-surface (gen-cordis-catalog.ts) — do not edit between markers -->
+
+<a id="cordis-surface"></a>
+
+## Cordis API
+
+Generated from source by `scripts/gen-cordis-catalog.ts` (verified fresh by `pnpm run verify-cordis-catalog` in doc-sync; regenerate with `pnpm run gen-cordis-catalog`) — the language sides differ only in locale-specific paired document paths. Signature blocks use a `ts cordis-catalog` fence and keep the original source JSDoc; dispatch modes are defined in the [primer](../cordis-primer.md#dispatch-modes), and the framework-inherited `ctx` API lives in [cordis-api/inherited.md](../cordis-api/inherited.md).
+
+<a id="ctxpackbindings--packbindings"></a>
+
+### `ctx.packBindings` — `PackBindings`
+
+Durable `directory → packs` bindings over the domain data form. Reads are synchronous against the domain's in-memory table once a path is canonicalized; writes go through the domain's write chain.
+
+```ts cordis-catalog
+/**
+ * Read the packs bound to one directory.
+ *
+ * A directory that cannot be resolved — deleted, or never created — holds no
+ * bindings, so this answers empty rather than failing the caller that is
+ * about to compose a session in it.
+ * @param path - directory path in any spelling.
+ * @returns the bound pack ids, empty when the directory has none.
+ */
+async for(path: string): Promise<readonly PackId[]>
+
+/**
+ * Replace the packs bound to one directory.
+ *
+ * An empty list removes the record rather than storing an empty one, so
+ * "bound to nothing" and "never bound" are one state.
+ * @param path - directory path in any spelling; it must exist.
+ * @param packIds - the complete new binding list; duplicates collapse, order is kept.
+ * @returns the stored binding list.
+ * @throws when the directory does not exist or cannot be resolved.
+ */
+async set(path: string, packIds: readonly PackId[]): Promise<readonly PackId[]>
+
+/**
+ * Every directory that has packs bound, for a management surface.
+ * @returns one entry per bound directory, in storage order.
+ */
+list(): readonly PackBinding[]
+```
+
+Source: [`packages/pack/pack-binding/src/index.ts`](../../packages/pack/pack-binding/src/index.ts)
+
+<a id="ctxpackmount--packmount"></a>
+
+### `ctx.packMount` — `PackMount`
+
+Composes an agent from the packs bound to its workspace directory.
+
+The service is optional in every composition: a deployment that mounts no pack rows simply never publishes it, and the session entry point that asks for it through `ctx.get('packMount')` gets `undefined` and composes as before.
+
+```ts cordis-catalog
+/**
+ * Mount every pack bound to one directory under an agent's scope.
+ *
+ * A bound pack the catalog no longer serves is logged and skipped rather
+ * than failing session creation: an uninstalled or unentitled pack must not
+ * make a workspace unopenable. A pack whose rows fail to activate does fail
+ * the mount, because a half-composed agent would run without the behavior
+ * the user turned on and with no sign that anything was missing.
+ * @param agentCtx - the agent's scope context, from the agent factory's `setup`.
+ * @param cwd - the session's working directory.
+ * @throws when `agentCtx` carries no scope, or when a bound pack's rows do not activate.
+ */
+async mount(agentCtx: Context, cwd: string): Promise<void>
+```
+
+Source: [`packages/pack/pack-mount/src/index.ts`](../../packages/pack/pack-mount/src/index.ts)
+
+<a id="ctxpacks--packregistry"></a>
+
+### `ctx.packs` — `PackRegistry`
+
+Registry of pack providers. It merges provider catalogs into one sorted listing, resolves the winning provider for a duplicate id, and loads composition rows on demand. Registration is effect-based, so a provider unregisters when its plugin unloads.
+
+```ts cordis-catalog
+/**
+ * Register a borrowed same-process provider synchronously during plugin
+ * apply. Duplicate provider names throw; remote initialization and
+ * entitlement resolution belong in `list()`. Fiber disposal unregisters the
+ * provider and invalidates the cached catalog.
+ * @param create - synchronous factory receiving this registration's lifecycle and invalidation control.
+ * @returns the exact Cordis effect disposer that unregisters this provider.
+ */
+registerProvider(create: (control: PackProviderControl) => PackProvider): () => void
+
+/**
+ * List the winning pack summaries across every registered provider.
+ * @param options - lookup options; `signal` cancels discovery.
+ * @returns sorted summaries, dropping providers whose discovery failed.
+ */
+async list(options: PackLookupOptions = {}): Promise<readonly PackSummary[]>
+
+/**
+ * Observe the current catalog and whether every provider completed.
+ * Incomplete observations are never cached, so a consumer may retain its
+ * last-good listing and retry.
+ * @param options - lookup options; `signal` cancels discovery.
+ * @returns sorted summaries plus discovery completeness.
+ */
+async snapshot(options: PackLookupOptions = {}): Promise<PackCatalogSnapshot>
+
+/**
+ * Load one pack's composition rows from the provider that owns the winning
+ * candidate for its id.
+ * @param id - kebab-case pack id.
+ * @param options - lookup options; `signal` cancels discovery and loading.
+ * @returns the full definition, or `undefined` when no provider serves the id.
+ * @throws TypeError when the id is not kebab-case, or when the winning
+ *   provider answers with a definition for a different id.
+ */
+async get(id: string, options: PackLookupOptions = {}): Promise<PackDefinition | undefined>
+```
+
+Source: [`packages/pack/pack/src/index.ts`](../../packages/pack/pack/src/index.ts)
+
+<a id="packs-events"></a>
+
+### `packs/*` events
+
+<a id="packschange--emit"></a>
+
+#### `packs/change` — emit
+
+A pack provider or a provider-backed catalog may have changed. This is an unfiltered invalidation notification; consumers refetch the catalog for their own lookup options. Listener failures are contained and cannot veto the registry mutation.
+
+```ts cordis-catalog
+/**
+ * A pack provider or a provider-backed catalog may have changed. This is an
+ * unfiltered invalidation notification; consumers refetch the catalog for
+ * their own lookup options. Listener failures are contained and cannot veto
+ * the registry mutation.
+ * @mode emit
+ */
+'packs/change'(): void
+```
+
+Source: [`packages/pack/pack/src/index.ts`](../../packages/pack/pack/src/index.ts)
+<!-- END GENERATED cordis-surface -->

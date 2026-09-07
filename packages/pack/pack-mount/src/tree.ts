@@ -34,7 +34,11 @@ export interface MountedPackTree {
  */
 const mounted = new WeakMap<object, MountedPackTree>()
 
-/** Read back the tree one mount created. */
+/**
+ * Read back the tree one mount created.
+ * @param config - the exact config object handed to `ctx.plugin(PackTree, …)`.
+ * @returns the tree and its fiber, or `undefined` when that config mounted none.
+ */
 export function mountedTree(config: object): MountedPackTree | undefined {
   return mounted.get(config)
 }

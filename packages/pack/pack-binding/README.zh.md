@@ -46,6 +46,7 @@ kind: "package-reference"
 ```ts
 import type { Context } from '@deepseek-ai/cordis'
 import { PackId } from '@deepseek-ai/dsh-pack'
+import type {} from '@deepseek-ai/dsh-pack-binding'
 
 declare const ctx: Context
 

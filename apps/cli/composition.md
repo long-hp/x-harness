@@ -104,6 +104,14 @@ flowchart LR
   cfg --> plugin_dsh_base_skill_badge
   plugin_dsh_base_tool_skill["tool-skill<br/>@deepseek-ai/dsh-tool-skill"]
   cfg --> plugin_dsh_base_tool_skill
+  plugin_dsh_base_pack["pack<br/>@deepseek-ai/dsh-pack"]
+  cfg --> plugin_dsh_base_pack
+  plugin_dsh_base_pack_local["pack-local<br/>@deepseek-ai/dsh-pack-local"]
+  cfg --> plugin_dsh_base_pack_local
+  plugin_dsh_base_pack_binding["pack-binding<br/>@deepseek-ai/dsh-pack-binding"]
+  cfg --> plugin_dsh_base_pack_binding
+  plugin_dsh_base_pack_mount["pack-mount<br/>@deepseek-ai/dsh-pack-mount"]
+  cfg --> plugin_dsh_base_pack_mount
   plugin_dsh_base_commands["commands<br/>@deepseek-ai/dsh-commands"]
   cfg --> plugin_dsh_base_commands
   plugin_dsh_base_command_feedback["command-feedback<br/>@deepseek-ai/dsh-command-feedback"]
@@ -230,6 +238,10 @@ flowchart LR
 | `skill-filesystem` | `@deepseek-ai/dsh-skill-filesystem` |
 | `skill-badge` | `@deepseek-ai/dsh-skill-badge` |
 | `tool-skill` | `@deepseek-ai/dsh-tool-skill` |
+| `pack` | `@deepseek-ai/dsh-pack` |
+| `pack-local` | `@deepseek-ai/dsh-pack-local` |
+| `pack-binding` | `@deepseek-ai/dsh-pack-binding` |
+| `pack-mount` | `@deepseek-ai/dsh-pack-mount` |
 | `commands` | `@deepseek-ai/dsh-commands` |
 | `command-feedback` | `@deepseek-ai/dsh-command-feedback` |
 | `goal` | `@deepseek-ai/dsh-goal` |

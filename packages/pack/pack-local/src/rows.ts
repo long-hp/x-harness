@@ -76,7 +76,11 @@ export async function readRules(directory: string, id: string, maxRuleBytes: num
   return rules
 }
 
-/** Whether a pack ships a skills directory. */
+/**
+ * Whether a pack ships a non-empty skills directory.
+ * @param directory - the pack directory.
+ * @returns whether the directory holds at least one skill entry.
+ */
 export async function hasSkills(directory: string): Promise<boolean> {
   try {
     const entries = await readdir(join(directory, SKILLS_DIR))

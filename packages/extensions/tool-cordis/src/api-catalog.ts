@@ -1330,6 +1330,77 @@ export const SERVICE_API: readonly ServiceApiEntry[] = [
     ],
   },
   {
+    key: 'packBindings',
+    summary: 'Durable `directory → packs` bindings over the domain data form.',
+    description: 'Durable `directory → packs` bindings over the domain data form. Reads are synchronous against the domain\'s in-memory table once a path is canonicalized; writes go through the domain\'s write chain.',
+    methods: [
+      {
+        signature: 'async for(path: string): Promise<readonly PackId[]>',
+        description: 'Read the packs bound to one directory.\n\nA directory that cannot be resolved — deleted, or never created — holds no bindings, so this answers empty rather than failing the caller that is about to compose a session in it.',
+        parameters: [{ name: 'path', description: 'directory path in any spelling.' }],
+        returns: 'the bound pack ids, empty when the directory has none.',
+      },
+      {
+        signature: 'async set(path: string, packIds: readonly PackId[]): Promise<readonly PackId[]>',
+        description: 'Replace the packs bound to one directory.\n\nAn empty list removes the record rather than storing an empty one, so "bound to nothing" and "never bound" are one state.',
+        parameters: [{ name: 'path', description: 'directory path in any spelling; it must exist.' }, { name: 'packIds', description: 'the complete new binding list; duplicates collapse, order is kept.' }],
+        returns: 'the stored binding list.',
+        throws: ['when the directory does not exist or cannot be resolved.'],
+      },
+      {
+        signature: 'list(): readonly PackBinding[]',
+        description: 'Every directory that has packs bound, for a management surface.',
+        parameters: [],
+        returns: 'one entry per bound directory, in storage order.',
+      },
+    ],
+  },
+  {
+    key: 'packMount',
+    summary: 'Composes an agent from the packs bound to its workspace directory.',
+    description: 'Composes an agent from the packs bound to its workspace directory.\n\nThe service is optional in every composition: a deployment that mounts no pack rows simply never publishes it, and the session entry point that asks for it through `ctx.get(\'packMount\')` gets `undefined` and composes as before.',
+    methods: [
+      {
+        signature: 'async mount(agentCtx: Context, cwd: string): Promise<void>',
+        description: 'Mount every pack bound to one directory under an agent\'s scope.\n\nA bound pack the catalog no longer serves is logged and skipped rather than failing session creation: an uninstalled or unentitled pack must not make a workspace unopenable. A pack whose rows fail to activate does fail the mount, because a half-composed agent would run without the behavior the user turned on and with no sign that anything was missing.',
+        parameters: [{ name: 'agentCtx', description: 'the agent\'s scope context, from the agent factory\'s `setup`.' }, { name: 'cwd', description: 'the session\'s working directory.' }],
+        throws: ['when `agentCtx` carries no scope, or when a bound pack\'s rows do not activate.'],
+      },
+    ],
+  },
+  {
+    key: 'packs',
+    summary: 'Registry of pack providers.',
+    description: 'Registry of pack providers. It merges provider catalogs into one sorted listing, resolves the winning provider for a duplicate id, and loads composition rows on demand. Registration is effect-based, so a provider unregisters when its plugin unloads.',
+    methods: [
+      {
+        signature: 'registerProvider(create: (control: PackProviderControl) => PackProvider): () => void',
+        description: 'Register a borrowed same-process provider synchronously during plugin apply. Duplicate provider names throw; remote initialization and entitlement resolution belong in `list()`. Fiber disposal unregisters the provider and invalidates the cached catalog.',
+        parameters: [{ name: 'create', description: 'synchronous factory receiving this registration\'s lifecycle and invalidation control.' }],
+        returns: 'the exact Cordis effect disposer that unregisters this provider.',
+      },
+      {
+        signature: 'async list(options: PackLookupOptions = {}): Promise<readonly PackSummary[]>',
+        description: 'List the winning pack summaries across every registered provider.',
+        parameters: [{ name: 'options', description: 'lookup options; `signal` cancels discovery.' }],
+        returns: 'sorted summaries, dropping providers whose discovery failed.',
+      },
+      {
+        signature: 'async snapshot(options: PackLookupOptions = {}): Promise<PackCatalogSnapshot>',
+        description: 'Observe the current catalog and whether every provider completed. Incomplete observations are never cached, so a consumer may retain its last-good listing and retry.',
+        parameters: [{ name: 'options', description: 'lookup options; `signal` cancels discovery.' }],
+        returns: 'sorted summaries plus discovery completeness.',
+      },
+      {
+        signature: 'async get(id: string, options: PackLookupOptions = {}): Promise<PackDefinition | undefined>',
+        description: 'Load one pack\'s composition rows from the provider that owns the winning candidate for its id.',
+        parameters: [{ name: 'id', description: 'kebab-case pack id.' }, { name: 'options', description: 'lookup options; `signal` cancels discovery and loading.' }],
+        returns: 'the full definition, or `undefined` when no provider serves the id.',
+        throws: ['TypeError when the id is not kebab-case, or when the winning provider answers with a definition for a different id.'],
+      },
+    ],
+  },
+  {
     key: 'permissionPresets',
     summary: 'Owns the deployment\'s permission presets and their write path.',
     description: 'Owns the deployment\'s permission presets and their write path. Requires a confining `ctx.shell` executor and `ctx.approval`; unmatched knob values are reported as CUSTOM_PRESET, not an error.',
@@ -3242,6 +3313,14 @@ export const EVENT_API: readonly EventApiEntry[] = [
     parameters: [{ name: 'options', description: 'the full request. A LOOP-built request carries the process-local {@link markAgentLoopRequest} identity and arrives deep-frozen (mutation throws): its content is a pure function of the session log (the reconstructability Agent Note), so listeners read it, never rewrite it. Hand-built calls do not carry that marker; their messages already obey the immutable creation contract.' }],
   },
   {
+    name: 'packs/change',
+    mode: 'emit',
+    signature: '\'packs/change\'(): void',
+    summary: 'A pack provider or a provider-backed catalog may have changed.',
+    description: 'A pack provider or a provider-backed catalog may have changed. This is an unfiltered invalidation notification; consumers refetch the catalog for their own lookup options. Listener failures are contained and cannot veto the registry mutation.',
+    parameters: [],
+  },
+  {
     name: 'session-telemetry/record',
     mode: 'waterfall',
     signature: '\'session-telemetry/record\'(record: SessionTelemetryRecord, next: () => SessionTelemetryRecord): SessionTelemetryRecord',
@@ -4640,6 +4719,50 @@ export const TYPE_API: readonly TypeApiEntry[] = [
   {
     name: 'OptionalSessionSeq',
     declaration: 'export type OptionalSessionSeq = SessionSeq | null;',
+  },
+  {
+    name: 'PackBinding',
+    declaration: 'export interface PackBinding {\n    readonly path: string;\n    readonly packIds: readonly PackId[];\n}',
+  },
+  {
+    name: 'PackCandidate',
+    declaration: 'export interface PackCandidate extends PackSummary {\n    readonly rank: number;\n    readonly locator: unknown;\n}',
+  },
+  {
+    name: 'PackCatalogSnapshot',
+    declaration: 'export interface PackCatalogSnapshot {\n    readonly packs: readonly PackSummary[];\n    readonly complete: boolean;\n}',
+  },
+  {
+    name: 'PackDefinition',
+    declaration: 'export interface PackDefinition extends PackSummary {\n    readonly rows: readonly PackRow[];\n}',
+  },
+  {
+    name: 'PackLookupOptions',
+    declaration: 'export interface PackLookupOptions {\n    readonly signal?: AbortSignal | undefined;\n}',
+  },
+  {
+    name: 'PackProvider',
+    declaration: 'export interface PackProvider {\n    readonly name: string;\n    readonly list: (options: PackLookupOptions) => Promise<readonly PackCandidate[] | PackProviderObservation>;\n    readonly get: (candidate: PackCandidate, options: PackLookupOptions) => Promise<PackDefinition | undefined>;\n}',
+  },
+  {
+    name: 'PackProviderControl',
+    declaration: 'export interface PackProviderControl {\n    readonly signal: AbortSignal;\n    readonly invalidate: () => void;\n}',
+  },
+  {
+    name: 'PackProviderObservation',
+    declaration: 'export interface PackProviderObservation {\n    readonly candidates: readonly PackCandidate[];\n    readonly complete: boolean;\n}',
+  },
+  {
+    name: 'PackResourceBase',
+    declaration: 'export type PackResourceBase = {\n    readonly kind: \'directory\';\n    readonly path: string;\n} | {\n    readonly kind: \'url\';\n    readonly url: string;\n} | {\n    readonly kind: \'opaque\';\n    readonly description: string;\n};',
+  },
+  {
+    name: 'PackRow',
+    declaration: 'export interface PackRow {\n    readonly id: string;\n    readonly name: string;\n    readonly config?: Readonly<Record<string, unknown>>;\n    readonly disabled?: boolean;\n}',
+  },
+  {
+    name: 'PackSummary',
+    declaration: 'export interface PackSummary {\n    readonly id: PackId;\n    readonly name: string;\n    readonly description: string;\n    readonly category: string;\n    readonly version: string;\n    readonly order: number;\n    readonly icon?: string;\n    readonly provider: string;\n    readonly resourceBase?: PackResourceBase;\n}',
   },
   {
     name: 'PermissionSelect',

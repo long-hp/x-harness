@@ -289,6 +289,27 @@
     - id: tool-skill
       name: '@deepseek-ai/dsh-tool-skill'
 
+    # Packs: behavior a user turns on for one project directory. The registry
+    # and the mount cost nothing until a directory has a pack bound, and the
+    # binding is keyed by canonical path so a session opened in that directory
+    # composes the same way from every profile. `dsh-pack-rules` is a dependency
+    # of this bundle without a row of its own: `dsh-pack-local` names it in the
+    # rows it generates, which resolve from here.
+    - id: pack
+      name: '@deepseek-ai/dsh-pack'
+
+    - id: pack-local
+      name: '@deepseek-ai/dsh-pack-local'
+      config:
+        roots:
+          - path: !!js dshHomePath('packs')
+
+    - id: pack-binding
+      name: '@deepseek-ai/dsh-pack-binding'
+
+    - id: pack-mount
+      name: '@deepseek-ai/dsh-pack-mount'
+
     - id: commands
       name: '@deepseek-ai/dsh-commands'
 

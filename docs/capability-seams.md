@@ -119,6 +119,13 @@ flowchart LR
   svc_skills["ctx.skills<br/>Skill provider registry"]
   pkg_skill_badge["skill-badge"]
   pkg_skill_filesystem["skill-filesystem"]
+  pkg_pack["pack"]
+  svc_packs["ctx.packs<br/>Pack provider registry"]
+  pkg_pack_local["pack-local"]
+  pkg_pack_mount["pack-mount"]
+  pkg_pack_binding["pack-binding"]
+  svc_packBindings["ctx.packBindings<br/>Directory-to-pack bindings"]
+  svc_packMount["ctx.packMount<br/>Pack composition into an agent scope"]
   svc_agents["ctx.agents<br/>Agent service"]
   pkg_acp["acp"]
   pkg_agent_default_model["agent-default-model"]
@@ -275,6 +282,10 @@ flowchart LR
   pkg_lsp --> svc_lsp
   pkg_lsp_stdio --> svc_lsp
   pkg_message_feedback --> svc_messageFeedback
+  pkg_pack --> svc_packs
+  pkg_pack_binding --> svc_packBindings
+  pkg_pack_local --> svc_packs
+  pkg_pack_mount --> svc_packMount
   pkg_permission_presets --> svc_permissionPresets
   pkg_plan_mode --> svc_planMode
   pkg_plugin_package_inventory_deepseek --> svc_deepseekLlmApiExtensions
@@ -380,6 +391,9 @@ flowchart LR
   svc_llm --> pkg_agent_loop
   svc_llm --> pkg_compaction_basic
   svc_lsp --> pkg_tool_lsp
+  svc_packBindings --> pkg_pack_mount
+  svc_packMount --> pkg_api_session_controller
+  svc_packs --> pkg_pack_mount
   svc_sandbox --> pkg_bash_sandbox
   svc_sandbox --> pkg_terminal_bash
   svc_sandboxPolicy --> pkg_bash_sandbox
@@ -509,6 +523,9 @@ flowchart LR
 | `ctx.sessionProjections` | `core` | [`session-projection`](../packages/session/session-projection) | - | [`api-session-controller`](../packages/api/session-controller), [`tool-todo`](../packages/todo/tool-todo), [`session-title`](../packages/session/session-title) | - | Domains register state-driven fold units; the eager drive keeps per-session watermark states and the Session controller serves baselines and pushes changed values. |
 | `ctx.sessionProjectionCache` | `core` | [`session-projection-cache`](../packages/session/session-projection-cache) | - | [`api-session-controller`](../packages/api/session-controller), [`session-query`](../packages/session-query/session-query), [`session-reference`](../packages/context/session-reference), [`subagent`](../packages/subagent/subagent) | - | Durably checkpoints projection unit states per session (throttled + turn/end/detach mandatory points) and serves the cold-read ladder: cache row + persistence tail replay, so listings never load full logs. |
 | `ctx.skills` | `seam` | [`skill`](../packages/skill/skill) | [`skill-badge`](../packages/skill/skill-badge), [`skill-filesystem`](../packages/skill/skill-filesystem) | [`tool-skill`](../packages/skill/tool-skill) | - | Merges provider skill catalogs; tool-skill renders the session-prefix catalog and loads complete skill bodies. |
+| `ctx.packs` | `seam` | [`pack`](../packages/pack/pack) | [`pack-local`](../packages/pack/pack-local) | [`pack-mount`](../packages/pack/pack-mount) | - | Merges provider pack catalogs and loads a pack's composition rows; a provider lists only what the installation may see, so entitlement never reaches a consumer. |
+| `ctx.packBindings` | `core` | [`pack-binding`](../packages/pack/pack-binding) | - | [`pack-mount`](../packages/pack/pack-mount) | - | Durable record of which packs a project directory turned on, keyed by canonical path so every profile opening a session there composes the same way. |
+| `ctx.packMount` | `core` | [`pack-mount`](../packages/pack/pack-mount) | - | [`api-session-controller`](../packages/api/session-controller) | - | Mounts a bound pack's rows under one agent scope, which is what keeps a project's packs out of another project's sessions. |
 | `ctx.agents` | `core` | [`agent`](../packages/core/agent) | - | [`agent-loop`](../packages/core/agent-loop), [`acp`](../packages/acp/acp), [`subagent-in-process-driver`](../packages/subagent/subagent-in-process-driver) | - | Owns live Agent handles, the create/resume factory seam, and process-local initiator propagation. |
 | `ctx.agentDefaultModel` | `core` | [`agent-default-model`](../packages/core/agent-default-model) | - | [`api-session-controller`](../packages/api/session-controller), [`headless`](../packages/bundle/headless) | - | Layers the default ModelSelection through settings so direct and Host-backed Agent entry points share one state owner. |
 | `ctx.agentLoop` | `bundle` | [`agent-loop`](../packages/core/agent-loop) | - | [`base`](../packages/bundle/base), [`sdk-minimal`](../packages/bundle/sdk-minimal) | - | The one concrete loop plugin; extension packages depend on dsh-agent events and services, not on this package. |
