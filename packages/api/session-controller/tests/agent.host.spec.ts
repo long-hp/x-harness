@@ -452,7 +452,9 @@ describe('ApiSession create or adoption', () => {
     await expect(agents.ensureSession(SessionId('mkdir-failure'), join(file, 'child'), false))
       .rejects.toThrow('failed to ensure project directory')
 
-    const composition = await agents.composeAgent(undefined)
-    expect(() => composition.setup(new Context())).toThrow('Agent setup has no scoped Agent')
+    // `setup` is async now that it may also mount packs, so the unscoped-context
+    // invariant settles as a rejection; every caller awaits it either way.
+    const composition = await agents.composeAgent(undefined, undefined)
+    await expect(composition.setup(new Context())).rejects.toThrow('Agent setup has no scoped Agent')
   })
 })

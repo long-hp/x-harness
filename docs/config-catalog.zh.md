@@ -1501,6 +1501,65 @@ export interface Config {
 
 来源：[`packages/feedback/message-feedback/src/index.ts:50`](../packages/feedback/message-feedback/src/index.ts)
 
+<a id="deepseek-aidsh-pack-local"></a>
+
+## `@deepseek-ai/dsh-pack-local`
+
+需要：`packs`
+
+```ts config-catalog
+/** Local pack provider configuration. */
+export interface Config {
+  /** Scanned directories in precedence order; earlier roots win an equal-rank duplicate id. */
+  roots: PackRoot[]
+  /** Provider name in `ctx.packs`; distinct per mounted instance. */
+  providerName?: string
+  /** Byte cap for one rule file; a larger file is skipped rather than truncated. */
+  maxRuleBytes?: number
+}
+
+/** One scanned directory holding pack directories. */
+export interface PackRoot {
+  /** Directory path; a leading `~` expands to the current home directory. */
+  path: string
+  /** Precedence for this root's packs; lower wins a duplicate id. */
+  rank?: number
+}
+```
+
+来源：[`packages/pack/pack-local/src/index.ts:47`](../packages/pack/pack-local/src/index.ts)
+
+<a id="deepseek-aidsh-pack-rules"></a>
+
+## `@deepseek-ai/dsh-pack-rules`
+
+需要：`systemPrompt`
+
+```ts config-catalog
+/** Plugin config: the rules this pack contributes to its mounting scope. */
+export interface Config {
+  /** Rules in the order the pack's provider read them. */
+  sections: PackRuleSection[]
+}
+
+/** One instruction rule contributed by a pack. */
+export interface PackRuleSection {
+  /**
+   * Prompt-section name, unique within the mounting scope. A duplicate throws
+   * at the section registry, which fails this row's mount rather than dropping
+   * a rule the user believes is active; a pack provider therefore qualifies the
+   * name with the pack id it came from.
+   */
+  name: string
+  /** Rule body placed in the system prompt; empty text drops the section at render. */
+  text: string
+  /** Position among prompt sections; omission uses the central `PACK_RULES` slot, after the deployment persona and before plan policy. */
+  order?: number
+}
+```
+
+来源：[`packages/pack/pack-rules/src/index.ts:34`](../packages/pack/pack-rules/src/index.ts)
+
 <a id="deepseek-aidsh-permission-presets"></a>
 
 ## `@deepseek-ai/dsh-permission-presets`
@@ -2503,7 +2562,7 @@ export interface Config {
 }
 ```
 
-来源：[`packages/core/system-prompt/src/index.ts:237`](../packages/core/system-prompt/src/index.ts)
+来源：[`packages/core/system-prompt/src/index.ts:238`](../packages/core/system-prompt/src/index.ts)
 
 <a id="deepseek-aidsh-terminal-bash"></a>
 
@@ -3382,6 +3441,9 @@ export interface Config {
 - `@deepseek-ai/dsh-host-plugin-inventory` — 需要 `loader`（[`packages/host/plugin-inventory/src/index.ts`](../packages/host/plugin-inventory/src/index.ts)）
 - `@deepseek-ai/dsh-llm`（[`packages/llm/llm/src/index.ts`](../packages/llm/llm/src/index.ts)）
 - `@deepseek-ai/dsh-lsp`（[`packages/lsp/lsp/src/index.ts`](../packages/lsp/lsp/src/index.ts)）
+- `@deepseek-ai/dsh-pack`（[`packages/pack/pack/src/index.ts`](../packages/pack/pack/src/index.ts)）
+- `@deepseek-ai/dsh-pack-binding` — 需要 `storageDomain`（[`packages/pack/pack-binding/src/index.ts`](../packages/pack/pack-binding/src/index.ts)）
+- `@deepseek-ai/dsh-pack-mount` — 需要 `packs` · `packBindings`（[`packages/pack/pack-mount/src/index.ts`](../packages/pack/pack-mount/src/index.ts)）
 - `@deepseek-ai/dsh-schedule` — 需要 `agents` · `sessions` · `tools` · `sessionPersistence`（[`packages/schedule/schedule/src/index.ts`](../packages/schedule/schedule/src/index.ts)）
 - `@deepseek-ai/dsh-session`（[`packages/core/session/src/index.ts`](../packages/core/session/src/index.ts)）
 - `@deepseek-ai/dsh-session-checkpoint-policy` — 需要 `llm` · `sessionPersistence` · `sessions` · `tools`（[`packages/session/session-checkpoint-policy/src/index.ts`](../packages/session/session-checkpoint-policy/src/index.ts)）

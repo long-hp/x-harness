@@ -36,6 +36,7 @@
     { "path": "../../util/deque" },
     { "path": "../../util/native-command" },
     { "path": "../../preset/agent-presets" },
+    { "path": "../../pack/pack-mount" },
     { "path": "../../session/session-persistence" },
     { "path": "../../session/session-projection" },
     { "path": "../../session/session-projection-cache" },

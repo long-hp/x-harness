@@ -8,6 +8,7 @@ import type {
 } from '@deepseek-ai/dsh-agent'
 import type {} from '@deepseek-ai/dsh-agent-default-model'
 import type {} from '@deepseek-ai/dsh-agent-presets'
+import type {} from '@deepseek-ai/dsh-pack-mount'
 import { ReasoningEffortId } from '@deepseek-ai/dsh-llm'
 import type { Session, SessionId } from '@deepseek-ai/dsh-session'
 import type { SessionInspection } from '@deepseek-ai/dsh-session-persistence'
@@ -368,21 +369,38 @@ export class ApiSessionAgentController {
 
   /**
    * Resolve the preset id and pre-publication Agent setup for a create or resume.
+   *
+   * Packs mount after the preset, so a workspace's own packs layer over the
+   * composition its preset chose. A Session with no recorded cwd mounts none:
+   * bindings are per directory, and there is no directory to read them for.
    * @param presetId - requested preset or the configured default when omitted.
+   * @param cwd - the Session's working directory, when it has one.
    * @returns the resolved preset identity and Agent setup callback.
    */
-  async composeAgent(presetId: string | undefined): Promise<{
+  async composeAgent(presetId: string | undefined, cwd: string | undefined): Promise<{
     readonly agentPreset?: string
     readonly setup: AgentSetup
   }> {
+    const mountPacks = async (agentCtx: Context): Promise<void> => {
+      if (cwd === undefined) return
+      await this.ctx.get('packMount')?.mount(agentCtx, cwd)
+    }
     const presets = this.ctx.get('agentPresets')
-    if (presets === undefined) return { setup: (agentCtx) => { this.installSelection(agentCtx) } }
+    if (presets === undefined) {
+      return {
+        setup: async (agentCtx) => {
+          this.installSelection(agentCtx)
+          await mountPacks(agentCtx)
+        },
+      }
+    }
     const resolvedId = (await presets.resolve(presetId)).id
     return {
       agentPreset: resolvedId,
       setup: async (agentCtx) => {
         this.installSelection(agentCtx)
         await presets.mount(agentCtx, resolvedId)
+        await mountPacks(agentCtx)
       },
     }
   }
@@ -419,7 +437,7 @@ export class ApiSessionAgentController {
     if (hasApiSessionSubagentOwner(this.ctx, { header: observation.header }, undefined)) {
       throw new ApiSessionSubagentOwnership(sessionId)
     }
-    const composition = await this.composeAgent(this.presetForObservation(observation))
+    const composition = await this.composeAgent(this.presetForObservation(observation), observation.header.cwd)
     const published = this.ctx.sessions.get(sessionId)
     const live = this.ctx.agents.get(sessionId)
     if (published !== undefined && hasApiSessionSubagentOwner(this.ctx, published, live)) {
@@ -456,7 +474,7 @@ export class ApiSessionAgentController {
         }
         const storedPreset = this.presetForObservation(observation)
         this.assertPresetUnchanged(sessionId, presetId, storedPreset)
-        const composition = await this.composeAgent(storedPreset)
+        const composition = await this.composeAgent(storedPreset, cwd)
         return (await this.ctx.agents.resume({
           resumeSessionId: sessionId,
           agentOptions: this.agentOptions(),
@@ -473,7 +491,7 @@ export class ApiSessionAgentController {
     } catch (error: unknown) {
       throw new Error(`failed to ensure project directory "${cwd}": ${String(error)}`, { cause: error })
     }
-    const composition = await this.composeAgent(presetId)
+    const composition = await this.composeAgent(presetId, cwd)
     return (await this.ctx.agents.create({
       sessionId,
       agentOptions: this.agentOptions(),
