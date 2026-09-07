@@ -1,0 +1,6 @@
+# The comparison preset: a tool row and no listener, so an agent composed from
+# it must not reach the listening preset's registrations.
+- id: tool
+  name: ../../plugins/contribute.js
+  config:
+    tool: quiet-tool

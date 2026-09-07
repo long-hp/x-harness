@@ -1,0 +1,11 @@
+# A preset that mounts a listener-only row beside an ordinary tool row: the
+# composition shape a hook bridge takes when a preset owns it.
+- id: listener
+  name: ../../plugins/listen.js
+  config:
+    tag: listening
+
+- id: tool
+  name: ../../plugins/contribute.js
+  config:
+    tool: listening-tool
