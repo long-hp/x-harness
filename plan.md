@@ -26,7 +26,7 @@ Tài liệu phân tích khoảng cách (gap analysis) cho 3 yêu cầu:
 | **MCP servers** kiểu `.mcp.json` | ⚠️ Có `mcp-client` (1 row/server), chưa đọc được `.mcp.json` | Nhỏ |
 | **Gói tất cả thành 1 "plugin" có manifest** | ❌ Chưa có | Trung bình |
 | **Gắn plugin vào 1 workspace/dự án** | ✅ **XONG** — `pack-binding` + `pack-mount`, khoá theo đường dẫn chuẩn hoá | 0 code |
-| Màn hình quản lý/bật-tắt plugin trong app | ❌ Chưa có (mới có settings section cho preset) | Trung bình |
+| Màn hình quản lý/bật-tắt plugin trong app | ⚠️ Remote `pack` đã xong; còn màn hình | Trung bình |
 | Tài khoản / entitlement / khoá plugin theo gói | ❌ **Hoàn toàn chưa có** | Lớn |
 | "Chỉ mình tôi tạo được plugin" | ❌ Chưa có | Trung bình |
 
@@ -235,7 +235,7 @@ packages/pack/
   pack-remote/          # Provider: pack tải từ server, kèm entitlement token       [Phase sau]
   pack-binding/         # workspaceId → packIds[], lưu qua ctx.storageDomain
 
-packages/api/pack-controller/     # @Remote packs/list, packs/bind, packs/unbind
+packages/api/pack-controller/     # ✅ XONG — @Remote catalog / bindings / bind / boundDirectories
 packages/client/ui-packs/         # màn hình "Plugins" + bật/tắt theo dự án
 ```
 
@@ -367,7 +367,7 @@ Không gom về một chỗ được vì `setup` là callback do **bên tạo ag
 | **2** | Mount `dsh-authorization` + Remote + nút Sign in vào `settings.models.provider-card` | Đăng nhập ChatGPT (Codex) từ UI | 3–5 ngày |
 | **3a** | ✅ **XONG** — `packages/preset/agent-presets/tests/listener-scope.spec.ts`: chứng minh listener của một preset row chỉ nhận agent trong scope, cho cả `agent/pre-step` lẫn `tools/pre-execute` | Nền tảng đã xác nhận | đã xong |
 | **3b** | ✅ **XONG** — `ctx.packs`, `pack-local`, `pack-rules`, `pack-binding` (khoá theo đường dẫn chuẩn hoá, không theo `WorkspaceId`), `pack-mount` + nối vào cả 5 entry point (web/Remote, headless, ACP, SDK, webhook). 5 package, coverage 100% | Bật pack cho thư mục → phiên mới trong đó có rules/skills/hooks của pack, ở mọi profile | đã xong |
-| **3c** | `ui-packs`: màn hình Plugins, bật/tắt theo dự án | Thao tác được trên app | 1 tuần |
+| **3c** | ✅ **Remote XONG** — `dsh-api-pack-controller` (`ctx.packController`): `catalog` / `bindings` / `bind` / `boundDirectories`, mount trong `web-app`. Còn `ui-packs`: màn hình Plugins, bật/tắt theo dự án | Thao tác được trên app | còn ~1 tuần |
 | **3d** | ✅ **hooks XONG** — `hooks/hooks.json` thành row `dsh-hooks-claude-code`, chứng minh bằng test composition thật. Còn `commands/*.md`, `agents/*.md`, `mcp.json` | Pack đầy đủ như Claude Code | còn 1 tuần |
 | **4** | `ctx.entitlements` + `entitlement-license` + ký pack | Khoá/mở theo license | 1–2 tuần |
 | **5** | `pack-remote` + auth tài khoản ở webserver + settings per-account | Bán theo gói thật | 2–4 tuần, phụ thuộc quyết định deploy |

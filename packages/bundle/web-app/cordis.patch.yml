@@ -100,6 +100,13 @@
     - id: workspace-controller
       name: '@deepseek-ai/dsh-api-workspace-controller'
 
+    # Pack catalog and per-directory pack bindings over Typert Remote. It
+    # injects the pack seam rather than reporting a missing provider, because
+    # `dsh-base` composes that seam unconditionally: an absent namespace here
+    # means the base rows were removed, which a startup audit shows.
+    - id: pack-controller
+      name: '@deepseek-ai/dsh-api-pack-controller'
+
     - id: cordis-host-runner
       name: '@deepseek-ai/dsh-cordis-host-runner'
 

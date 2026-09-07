@@ -1356,6 +1356,38 @@ export const SERVICE_API: readonly ServiceApiEntry[] = [
     ],
   },
   {
+    key: 'packController',
+    summary: 'Host service backing the generated `ctx.remote.pack` namespace.',
+    description: 'Host service backing the generated `ctx.remote.pack` namespace.\n\nReads never fail on a directory: one that cannot be resolved holds no bindings and answers empty, because a project page must render for a folder that moved. A write to such a directory is refused, because binding a pack to a directory that is not there is a caller mistake worth reporting.',
+    methods: [
+      {
+        signature: '@Remote async catalog(signal: AbortSignal): Promise<PackCatalogValue>',
+        description: 'Every pack this installation may see, in display order.',
+        parameters: [{ name: 'signal', description: 'cancels provider discovery for this caller.' }],
+        returns: 'the catalog plus whether every provider completed.',
+      },
+      {
+        signature: '@Remote async bindings(directory: string): Promise<PackBindingValue>',
+        description: 'Read the packs one directory has turned on.',
+        parameters: [{ name: 'directory', description: 'directory path in any spelling.' }],
+        returns: 'the bound pack ids, empty when the directory has none or no longer exists.',
+      },
+      {
+        signature: '@Remote async bind(directory: string, packs: readonly string[]): Promise<PackBindingValue>',
+        description: 'Replace the packs one directory has turned on.\n\nThe list is complete rather than additive, and an empty list unbinds the directory. An id no provider currently serves is stored as readily as a live one, so an uninstalled pack returns when its provider does.',
+        parameters: [{ name: 'directory', description: 'directory path in any spelling; it must exist.' }, { name: 'packs', description: 'the complete new binding list; duplicates collapse, order is kept.' }],
+        returns: 'the stored binding list.',
+        throws: ['RemoteError when the request is malformed or the directory cannot be resolved.'],
+      },
+      {
+        signature: '@Remote boundDirectories(): PackBindingListValue',
+        description: 'Every directory that has packs bound.',
+        parameters: [],
+        returns: 'one entry per bound directory, keyed by its stored canonical path.',
+      },
+    ],
+  },
+  {
     key: 'packMount',
     summary: 'Composes an agent from the packs bound to its workspace directory.',
     description: 'Composes an agent from the packs bound to its workspace directory.\n\nThe service is optional in every composition: a deployment that mounts no pack rows simply never publishes it, and the session entry point that asks for it through `ctx.get(\'packMount\')` gets `undefined` and composes as before.',
@@ -4725,12 +4757,24 @@ export const TYPE_API: readonly TypeApiEntry[] = [
     declaration: 'export interface PackBinding {\n    readonly path: string;\n    readonly packIds: readonly PackId[];\n}',
   },
   {
+    name: 'PackBindingListValue',
+    declaration: 'export interface PackBindingListValue {\n    readonly bindings: readonly PackBindingValue[];\n}',
+  },
+  {
+    name: 'PackBindingValue',
+    declaration: 'export interface PackBindingValue {\n    readonly directory: string;\n    readonly packs: readonly string[];\n}',
+  },
+  {
     name: 'PackCandidate',
     declaration: 'export interface PackCandidate extends PackSummary {\n    readonly rank: number;\n    readonly locator: unknown;\n}',
   },
   {
     name: 'PackCatalogSnapshot',
     declaration: 'export interface PackCatalogSnapshot {\n    readonly packs: readonly PackSummary[];\n    readonly complete: boolean;\n}',
+  },
+  {
+    name: 'PackCatalogValue',
+    declaration: 'export interface PackCatalogValue {\n    readonly packs: readonly PackSummaryView[];\n    readonly complete: boolean;\n}',
   },
   {
     name: 'PackDefinition',
@@ -4763,6 +4807,10 @@ export const TYPE_API: readonly TypeApiEntry[] = [
   {
     name: 'PackSummary',
     declaration: 'export interface PackSummary {\n    readonly id: PackId;\n    readonly name: string;\n    readonly description: string;\n    readonly category: string;\n    readonly version: string;\n    readonly order: number;\n    readonly icon?: string;\n    readonly provider: string;\n    readonly resourceBase?: PackResourceBase;\n}',
+  },
+  {
+    name: 'PackSummaryView',
+    declaration: 'export interface PackSummaryView {\n    readonly id: string;\n    readonly name: string;\n    readonly description: string;\n    readonly category: string;\n    readonly version: string;\n    readonly order: number;\n    readonly icon?: string;\n    readonly provider: string;\n}',
   },
   {
     name: 'PermissionSelect',

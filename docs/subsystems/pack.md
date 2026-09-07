@@ -17,8 +17,9 @@ The family follows the [capability-seam](../capability-seams.md) split. Only the
 | Consumer | [`dsh-pack-rules`](../../packages/pack/pack-rules) realizes a pack's rules; a pack's skills reuse [`dsh-skill-filesystem`](../../packages/skill/skill-filesystem) and its hooks reuse [`dsh-hooks-claude-code`](../../packages/hooks/hooks-claude-code) | shipped |
 | Binding | [`dsh-pack-binding`](../../packages/pack/pack-binding) (`ctx.packBindings`) | shipped |
 | Mounting | [`dsh-pack-mount`](../../packages/pack/pack-mount) (`ctx.packMount`), called from the session entry point's agent setup | shipped |
+| Remote | [`dsh-api-pack-controller`](../../packages/api/pack-controller) (`ctx.packController`), the `pack` namespace a client reads and writes bindings through | shipped |
 
-Every role the family needs to run is in place. What is missing is a surface: turning a pack on for a project is an API call today, with no Remote and no browser page behind it.
+Every role the family needs to run is in place, and a Remote client can now turn a pack on. What is missing is a browser page: no shipped surface calls the `pack` namespace, so binding is still a scripted call rather than something a user clicks.
 
 ## Binding identity
 
@@ -138,6 +139,51 @@ list(): readonly PackBinding[]
 ```
 
 Source: [`packages/pack/pack-binding/src/index.ts`](../../packages/pack/pack-binding/src/index.ts)
+
+<a id="ctxpackcontroller--packcontroller"></a>
+
+### `ctx.packController` — `PackController`
+
+Host service backing the generated `ctx.remote.pack` namespace.
+
+Reads never fail on a directory: one that cannot be resolved holds no bindings and answers empty, because a project page must render for a folder that moved. A write to such a directory is refused, because binding a pack to a directory that is not there is a caller mistake worth reporting.
+
+```ts cordis-catalog
+/**
+ * Every pack this installation may see, in display order.
+ * @param signal - cancels provider discovery for this caller.
+ * @returns the catalog plus whether every provider completed.
+ */
+@Remote async catalog(signal: AbortSignal): Promise<PackCatalogValue>
+
+/**
+ * Read the packs one directory has turned on.
+ * @param directory - directory path in any spelling.
+ * @returns the bound pack ids, empty when the directory has none or no longer exists.
+ */
+@Remote async bindings(directory: string): Promise<PackBindingValue>
+
+/**
+ * Replace the packs one directory has turned on.
+ *
+ * The list is complete rather than additive, and an empty list unbinds the
+ * directory. An id no provider currently serves is stored as readily as a
+ * live one, so an uninstalled pack returns when its provider does.
+ * @param directory - directory path in any spelling; it must exist.
+ * @param packs - the complete new binding list; duplicates collapse, order is kept.
+ * @returns the stored binding list.
+ * @throws RemoteError when the request is malformed or the directory cannot be resolved.
+ */
+@Remote async bind(directory: string, packs: readonly string[]): Promise<PackBindingValue>
+
+/**
+ * Every directory that has packs bound.
+ * @returns one entry per bound directory, keyed by its stored canonical path.
+ */
+@Remote boundDirectories(): PackBindingListValue
+```
+
+Source: [`packages/api/pack-controller/src/index.ts`](../../packages/api/pack-controller/src/index.ts)
 
 <a id="ctxpackmount--packmount"></a>
 

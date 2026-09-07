@@ -675,6 +675,25 @@ importers:
         specifier: ^4.4.3
         version: 4.4.3
 
+  packages/api/pack-controller:
+    dependencies:
+      zod:
+        specifier: ^4.4.3
+        version: 4.4.3
+    devDependencies:
+      '@deepseek-ai/cordis':
+        specifier: workspace:^
+        version: link:../../../vendor/cordis
+      '@deepseek-ai/dsh-pack':
+        specifier: workspace:^
+        version: link:../../pack/pack
+      '@deepseek-ai/dsh-pack-binding':
+        specifier: workspace:^
+        version: link:../../pack/pack-binding
+      '@deepseek-ai/dsh-typert-protocol':
+        specifier: workspace:^
+        version: link:../../typert/protocol
+
   packages/api/remotes:
     dependencies:
       '@deepseek-ai/dsh-deque':
@@ -1492,6 +1511,9 @@ importers:
       '@deepseek-ai/dsh-agent-presets':
         specifier: workspace:^
         version: link:../../preset/agent-presets
+      '@deepseek-ai/dsh-api-pack-controller':
+        specifier: workspace:^
+        version: link:../../api/pack-controller
       '@deepseek-ai/dsh-api-remotes':
         specifier: workspace:^
         version: link:../../api/remotes

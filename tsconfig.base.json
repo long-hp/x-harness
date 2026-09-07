@@ -45,6 +45,8 @@
       "@deepseek-ai/dsh-api-gateway": ["./packages/api/gateway/src/index.ts"],
       "@deepseek-ai/dsh-api-gateway/client": ["./packages/api/gateway/src/client/index.ts"],
       "@deepseek-ai/dsh-api-gateway/types": ["./packages/api/gateway/src/types.ts"],
+      "@deepseek-ai/dsh-api-pack-controller": ["./packages/api/pack-controller/src/index.ts"],
+      "@deepseek-ai/dsh-api-pack-controller/types": ["./packages/api/pack-controller/src/types.ts"],
       "@deepseek-ai/dsh-api-session-controller": ["./packages/api/session-controller/src/index.ts"],
       "@deepseek-ai/dsh-api-session-controller/client": ["./packages/api/session-controller/src/client/index.ts"],
       "@deepseek-ai/dsh-api-session-controller/types": ["./packages/api/session-controller/src/types.ts"],
@@ -230,6 +232,11 @@
       // util/ folders are role-named without the util- prefix their npm names carry,
       // so these aliases stay hand-written like dsh-util-crypto above.
       "@deepseek-ai/dsh-util-time": ["./packages/util/time/src"],
+      // The pack vocabulary lives in its own `types` entry, which a branded id
+      // reaches from another package's emitted declarations. Without this alias
+      // the declaration emitter falls back to a relative path into that source
+      // tree, which `verify-node-next-types` rejects.
+      "@deepseek-ai/dsh-pack/types": ["./packages/pack/pack/src/types.ts"],
       // BEGIN generated package aliases — pnpm run gen-tsconfig-paths
       "@deepseek-ai/dsh-acp": ["./packages/acp/acp/src"],
       "@deepseek-ai/dsh-acp-app": ["./packages/bundle/acp-app/src"],

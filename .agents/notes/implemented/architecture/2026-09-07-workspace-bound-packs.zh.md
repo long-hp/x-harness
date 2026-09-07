@@ -92,4 +92,4 @@ scope 保证是被证明的，而不是被假定的。[`packages/preset/agent-pr
 
 尚无测试启动一个已构建的 profile、在其中让 pack 生成的组合行按包名解析 `@deepseek-ai/dsh-pack-rules` 与 `@deepseek-ai/dsh-skill-filesystem`。挂载、组合行形状与 scope 保证各自都有覆盖，但那些模块名在真实组合中的解析属于 profile 级测试层，那一层会先构建 `lib/`。
 
-pack 的 `commands/`、`agents/` 与 `mcp.json` 的加载器尚未构建；`dsh-pack-local` 只读取 `rules/`、`skills/` 与 `hooks/hooks.json`，因此今天把其余内容放进 pack 不会产生任何贡献。pack 的 hooks 也只能抵达桥接所实现的那七个 Claude Code 事件。没有任何界面可以开启一个 pack：绑定是一次 API 调用，背后既没有 Remote 也没有浏览器页面。
+pack 的 `commands/`、`agents/` 与 `mcp.json` 的加载器尚未构建；`dsh-pack-local` 只读取 `rules/`、`skills/` 与 `hooks/hooks.json`，因此今天把其余内容放进 pack 不会产生任何贡献。pack 的 hooks 也只能抵达桥接所实现的那七个 Claude Code 事件。`pack` Remote 命名空间已经存在，但没有任何已发布的界面调用它：绑定仍然是一次脚本化的调用，而不是用户可以点击的东西。

@@ -2,5 +2,5 @@
 # side as of the last confirmed-consistent state. Both languages carry equal authority;
 # after editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write .agents/notes/implemented/architecture/2026-09-07-workspace-bound-packs.md
-2026-09-07-workspace-bound-packs.md: 0fd7751a10a3cc6e6398d396dc4e29a6ec0b0a09
-2026-09-07-workspace-bound-packs.zh.md: 1b7490123f2e3120ce5eb97791c062c820665d98
+2026-09-07-workspace-bound-packs.md: 5a444c99209efa6ca8841dacfd756ad11ec386f7
+2026-09-07-workspace-bound-packs.zh.md: 99b5c741b9300c1ed14ab45d0c5ef223713c12ae

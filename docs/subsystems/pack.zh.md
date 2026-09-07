@@ -17,8 +17,9 @@
 | Consumer | [`dsh-pack-rules`](../../packages/pack/pack-rules) 落实 pack 的 rules；pack 的 skills 复用 [`dsh-skill-filesystem`](../../packages/skill/skill-filesystem)，其 hooks 复用 [`dsh-hooks-claude-code`](../../packages/hooks/hooks-claude-code) | 已交付 |
 | Binding | [`dsh-pack-binding`](../../packages/pack/pack-binding)（`ctx.packBindings`） | 已交付 |
 | Mounting | [`dsh-pack-mount`](../../packages/pack/pack-mount)（`ctx.packMount`），由会话入口的 Agent setup 调用 | 已交付 |
+| Remote | [`dsh-api-pack-controller`](../../packages/api/pack-controller)（`ctx.packController`），客户端读写绑定所经由的 `pack` 命名空间 | 已交付 |
 
-该家族运行所需的每个角色都已就位。缺的是界面：为项目开启一个 pack 目前是一次 API 调用，背后既没有 Remote 也没有浏览器页面。
+该家族运行所需的每个角色都已就位，Remote 客户端现在也可以开启一个 pack。缺的是浏览器页面：没有任何已发布的界面调用 `pack` 命名空间，因此绑定仍然是一次脚本化的调用，而不是用户可以点击的东西。
 
 ## 绑定身份
 
@@ -138,6 +139,51 @@ list(): readonly PackBinding[]
 ```
 
 Source: [`packages/pack/pack-binding/src/index.ts`](../../packages/pack/pack-binding/src/index.ts)
+
+<a id="ctxpackcontroller--packcontroller"></a>
+
+### `ctx.packController` — `PackController`
+
+Host service backing the generated `ctx.remote.pack` namespace.
+
+Reads never fail on a directory: one that cannot be resolved holds no bindings and answers empty, because a project page must render for a folder that moved. A write to such a directory is refused, because binding a pack to a directory that is not there is a caller mistake worth reporting.
+
+```ts cordis-catalog
+/**
+ * Every pack this installation may see, in display order.
+ * @param signal - cancels provider discovery for this caller.
+ * @returns the catalog plus whether every provider completed.
+ */
+@Remote async catalog(signal: AbortSignal): Promise<PackCatalogValue>
+
+/**
+ * Read the packs one directory has turned on.
+ * @param directory - directory path in any spelling.
+ * @returns the bound pack ids, empty when the directory has none or no longer exists.
+ */
+@Remote async bindings(directory: string): Promise<PackBindingValue>
+
+/**
+ * Replace the packs one directory has turned on.
+ *
+ * The list is complete rather than additive, and an empty list unbinds the
+ * directory. An id no provider currently serves is stored as readily as a
+ * live one, so an uninstalled pack returns when its provider does.
+ * @param directory - directory path in any spelling; it must exist.
+ * @param packs - the complete new binding list; duplicates collapse, order is kept.
+ * @returns the stored binding list.
+ * @throws RemoteError when the request is malformed or the directory cannot be resolved.
+ */
+@Remote async bind(directory: string, packs: readonly string[]): Promise<PackBindingValue>
+
+/**
+ * Every directory that has packs bound.
+ * @returns one entry per bound directory, keyed by its stored canonical path.
+ */
+@Remote boundDirectories(): PackBindingListValue
+```
+
+Source: [`packages/api/pack-controller/src/index.ts`](../../packages/api/pack-controller/src/index.ts)
 
 <a id="ctxpackmount--packmount"></a>
 

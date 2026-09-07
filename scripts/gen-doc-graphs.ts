@@ -200,6 +200,13 @@ const SERVICE_ROLES: ServiceRole[] = [
     note: 'Owns Workspace commands and reconnect-safe Workspace state delivery through the generated Remote namespace.',
   },
   {
+    key: 'packController',
+    pkg: 'api-pack-controller',
+    title: 'Host pack Remote controller',
+    mode: 'core',
+    note: 'Projects the pack registry and binding store onto the generated Remote namespace: request admission, the browser-safe summary view that withholds a provider\'s host path, and refusal mapping live here, not on either seam Definition.',
+  },
+  {
     key: 'directoryPickerController',
     pkg: 'api-workspace-controller',
     title: 'Host directory-picking Remote controller',
