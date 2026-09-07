@@ -26,17 +26,21 @@ The family splits into five packages, each owning one role:
 | `dsh-pack-binding` (`ctx.packBindings`) | Durable `directory → packs` records |
 | `dsh-pack-mount` (`ctx.packMount`) | Reads a binding and mounts the rows under one agent's scope |
 
-`ApiSessionAgentController.composeAgent()` calls `ctx.get('packMount')?.mount(agentCtx, cwd)` from the unpublished agent's `setup`, after the preset mounts. A deployment that mounts no pack rows reads `undefined` there and composes exactly as before.
+Every entry point that opens a session calls `ctx.get('packMount')?.mount(agentCtx, cwd)` from the unpublished agent's `setup`, after any preset mount: `ApiSessionAgentController.composeAgent()` for the browser application and the Remote API, `dsh-headless` for its launch directory, `dsh-acp` for the `newSession` cwd, `dsh-sdk-server` for the directory named at `initialize`, and `dsh-webhook` for the resolved workspace path. A deployment that mounts no pack rows reads `undefined` there and composes exactly as before.
 
-The rows live in [`dsh-base`](../../../../packages/bundle/base/cordis.patch.yml) rather than in the browser bundle, so every base-backed profile composes packs — which is the point of the path-keyed binding below. `dsh-pack-local` scans `<dshHome>/packs`. `dsh-pack-rules` is a dependency of that bundle without a row of its own, because `dsh-pack-local` names it in the rows it generates and those resolve from the bundle.
+The call is repeated rather than centralized because a `setup` callback belongs to whoever creates the agent; there is no shared point between them that still runs before publication. That repetition is what makes the path key honest — a profile left off the list would silently withhold packs from a directory that has them bound, which is the exact failure the key was chosen to prevent.
+
+The rows live in [`dsh-base`](../../../../packages/bundle/base/cordis.patch.yml) rather than in the browser bundle, so every base-backed profile can compose packs — which is the point of the path-keyed binding below. `dsh-pack-local` scans `<dshHome>/packs`. `dsh-pack-rules` is a dependency of that bundle without a row of its own, because `dsh-pack-local` names it in the rows it generates and those resolve from the bundle.
 
 ### A pack's contents become Cordis rows
 
 A pack's contents are heterogeneous — rules are prompt sections, skills are catalog entries, hooks are shell processes, MCP servers are external connections — and the harness already has one representation covering all of them: a Cordis plugin row. `PackRow` therefore mirrors an `agent.cordis.yml` entry, and the mount reuses the Loader's own entry machinery rather than adding a second way to install anything.
 
-Each contribution kind reuses a plugin that already exists. Skills become a `dsh-skill-filesystem` row with `providerName: pack:<id>` and `includeDefaultRoots: false`, which was enough to scope one instance to one pack without touching that package. Only rules needed a new Consumer: `dsh-persona` is one section per scope and a second collides, while `dsh-agent-instructions` discovers files under the *session's* working directory, which is exactly where a pack's rules are not.
+Each contribution kind reuses a plugin that already exists. Skills become a `dsh-skill-filesystem` row with `providerName: pack:<id>` and `includeDefaultRoots: false`, which was enough to scope one instance to one pack without touching that package. Hooks become a `dsh-hooks-claude-code` row with `pluginRoot` set to the pack directory, so a pack authored for Claude Code runs unchanged. Only rules needed a new Consumer: `dsh-persona` is one section per scope and a second collides, while `dsh-agent-instructions` discovers files under the *session's* working directory, which is exactly where a pack's rules are not.
 
 Rules travel as text rather than as file paths, because a pack may come from a remote provider with no filesystem the mounting process can read. That is what makes the same `PackDefinition` shape work for a licensed remote source later.
+
+Hooks are the deliberate exception and travel as a config path. A hook is a command line, and the commands a pack ships run its own scripts through `${CLAUDE_PLUGIN_ROOT}`; those scripts have to exist on the host that runs them. A hook-bearing pack is therefore filesystem-bound whatever its provider does with the rest of its contents, and carrying the file's bytes in the row would buy nothing while forcing the bridge to grow a second input.
 
 ### Bindings key on the canonical directory path
 
@@ -62,6 +66,8 @@ This bounds what packaging can protect: a pack whose files sit on the user's own
 
 ## Consequences
 
+**A pack's hooks are scoped by where the bridge is mounted, not by anything the bridge does.** Nothing in `dsh-hooks-claude-code` changed. Its README limitation — one config for the whole process, read once at startup — remains true of a host-level mount and is simply not what a pack does. That is the general shape the row representation buys: a per-directory version of an existing plugin is a mounting choice.
+
 **A pack's contributions are fixed at session creation.** The mount runs once in `setup`, before the agent is published and therefore before its first request. Turning a pack on or off affects sessions created afterwards; a running session keeps what it started with. That matches the preset rule and is what keeps a session's logged tool calls callable by its own composition.
 
 **Two packs bound to one directory cannot collide on a row id.** Every row mounts as `<packId>.<rowId>`, so neither pack has to know what the other named its rows.
@@ -80,8 +86,10 @@ The scope guarantee is proven rather than assumed. [`packages/preset/agent-prese
 
 [`packages/pack/pack-mount/tests/composition.spec.ts`](../../../../packages/pack/pack-mount/tests/composition.spec.ts) mounts a pack from inside a Loader entry — the shape the session entry point has — and asserts the composed row's `subtree` slot is reclaimed, so a Loader walk never reports one agent's pack rows as entries of the application.
 
+[`packages/pack/pack-mount/tests/hooks-composition.spec.ts`](../../../../packages/pack/pack-mount/tests/hooks-composition.spec.ts) closes the remaining gap in that guarantee. The scope spike used a fixture row registering the same listeners the bridge uses, not the bridge itself, which needs `ctx.shell`, `sessionProjections`, and a config file. This test mounts the real `dsh-hooks-claude-code` through the real local provider and runs a real shell hook: two directories bound to different packs each see only their own pack's hooks, and only the bound session logs the `hook/invoked`/`hook/result` pair. Rows resolve through a source-plane module map, the repo's pattern for a Loader composition test that must pass on a clean tree, so it also pins the exact module name `dsh-pack-local` writes.
+
 ## Deferred
 
 No test yet boots a built profile in which a pack's generated rows resolve `@deepseek-ai/dsh-pack-rules` and `@deepseek-ai/dsh-skill-filesystem` by package name. The mount, the row shapes, and the scope guarantee are each covered, but the resolution of those module names in a real composition belongs to the profile-level tier, which builds `lib/` first.
 
-Loaders for a pack's `hooks/`, `commands/`, `agents/`, and `mcp.json` are unbuilt; `dsh-pack-local` reads `rules/` and `skills/` only, so shipping the others in a pack contributes nothing today. No surface turns a pack on: binding is an API call, with no Remote and no browser page behind it.
+Loaders for a pack's `commands/`, `agents/`, and `mcp.json` are unbuilt; `dsh-pack-local` reads `rules/`, `skills/`, and `hooks/hooks.json` only, so shipping the others in a pack contributes nothing today. A pack's hooks also reach only the seven Claude Code events the bridge implements. No surface turns a pack on: binding is an API call, with no Remote and no browser page behind it.

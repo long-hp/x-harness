@@ -252,26 +252,56 @@ describe('building a pack\'s composition rows', () => {
     }])
   })
 
-  it('emits rules before skills when a pack ships both', async () => {
+  it('points a hooks-claude-code row at the pack\'s own hook configuration', async () => {
     const root = await makeRoot()
-    await writePack(root, 'both', {
-      'pack.yml': 'name: Both\n',
-      'rules/voice.md': 'Rule body.',
-      'skills/outline/SKILL.md': 'Body.',
+    const directory = await writePack(root, 'gated', {
+      'pack.yml': 'name: Gated\n',
+      'hooks/hooks.json': '{"hooks":{}}',
     })
     const ctx = await harness(root)
 
-    const definition = await ctx.packs.get('both')
+    const definition = await ctx.packs.get('gated')
 
-    expect(definition?.rows.map(row => row.id)).toEqual(['rules', 'skills'])
+    expect(definition?.rows).toEqual([{
+      id: 'hooks',
+      name: '@deepseek-ai/dsh-hooks-claude-code',
+      // `pluginRoot` is the pack directory so a portable pack's
+      // `${CLAUDE_PLUGIN_ROOT}` commands reach its own scripts; `projectDir` is
+      // absent so the bridge defaults it to the session's directory.
+      config: { configPath: join(directory, 'hooks', 'hooks.json'), pluginRoot: directory },
+    }])
   })
 
-  it('produces no rows for a pack that ships neither', async () => {
+  it('emits rules, then skills, then hooks when a pack ships all three', async () => {
+    const root = await makeRoot()
+    await writePack(root, 'full', {
+      'pack.yml': 'name: Full\n',
+      'rules/voice.md': 'Rule body.',
+      'skills/outline/SKILL.md': 'Body.',
+      'hooks/hooks.json': '{"hooks":{}}',
+    })
+    const ctx = await harness(root)
+
+    const definition = await ctx.packs.get('full')
+
+    expect(definition?.rows.map(row => row.id)).toEqual(['rules', 'skills', 'hooks'])
+  })
+
+  it('produces no rows for a pack that ships none of them', async () => {
     const root = await makeRoot()
     await writePack(root, 'empty', { 'pack.yml': 'name: Empty\n' })
     const ctx = await harness(root)
 
     await expect(ctx.packs.get('empty')).resolves.toEqual(expect.objectContaining({ rows: [] }))
+  })
+
+  it('emits no hook row for a hooks directory without the configuration file', async () => {
+    const root = await makeRoot()
+    const directory = await writePack(root, 'bare-hooks', { 'pack.yml': 'name: Bare\n' })
+    await mkdir(join(directory, 'hooks'), { recursive: true })
+    const ctx = await harness(root)
+
+    await expect(ctx.packs.get('bare-hooks')).resolves.toEqual(expect.objectContaining({ rows: [] }))
   })
 
   it('ignores non-markdown files and subdirectories under rules', async () => {

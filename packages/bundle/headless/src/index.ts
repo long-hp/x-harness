@@ -23,6 +23,8 @@ import type { Session, SessionEvent, SessionId, SessionLogOffset } from '@deepse
 // and the cmdline Context merge for the appExit host value.
 import type {} from '@deepseek-ai/cordis-plugin-loader'
 import type {} from '@deepseek-ai/dsh-cmdline'
+// Carries the Context merge for the optional pack mount below.
+import type {} from '@deepseek-ai/dsh-pack-mount'
 
 /** Stable Cordis plugin name. */
 export const name = 'headless-runner'
@@ -181,13 +183,18 @@ async function run(ctx: Context, task: string, io: HeadlessIo): Promise<void> {
   // host plane and the agent reads them from the global layer. A deployment
   // that DOES configure one has to join it here first
   // (@deepseek-ai/dsh-agent-presets README, "Composing a child agent").
+  const cwd = process.cwd()
   const { agent } = await agents.create({
     sessionId: brandString<SessionId>(`session-${randomUUID()}`),
-    meta: { cwd: process.cwd() },
+    meta: { cwd },
     agentOptions: { provider: selection.provider, model: selection.model },
-    setup: (agentCtx) => {
+    setup: async (agentCtx) => {
       const selected: ModelSelectionRef = { current: selection, assembled: undefined }
       installModelSelection(agentCtx, selected)
+      // A directory's packs apply to every profile opened in it, not only to
+      // the browser application, so this runner composes them too. Absent
+      // service means this deployment mounts no pack rows.
+      await ctx.get('packMount')?.mount(agentCtx, cwd)
     },
   })
   await agent.whenIdle()

@@ -114,6 +114,35 @@ async function settleSubagent(
 }
 
 describe('HarnessSdkJsonRpcServer', () => {
+  it('composes the initialized working directory\'s packs into each session', { timeout: 15_000 }, async () => {
+    const storageDir = await mkdtemp(join(tmpdir(), 'dsh-jsonrpc-packs-'))
+    const llmServer = await mockCompletionServer()
+    vi.stubEnv('DEEPSEEK_API_KEY', 'test-key')
+    vi.stubEnv('DEEPSEEK_BASE_URL', llmServer.url)
+    const ctx = await makeHarness(storageDir)
+    const mounted: string[] = []
+    ctx.provide('packMount', {
+      mount: (_agentCtx: unknown, cwd: string) => { mounted.push(cwd); return Promise.resolve() },
+    } as never)
+    try {
+      const server = new HarnessSdkJsonRpcServer(ctx, new FakeTransport())
+      await server.handleRequest('initialize', {
+        cwd: storageDir, provider: 'deepseek-official', model: 'dsagent-model',
+      })
+      await server.handleRequest('session/prompt', {
+        sessionId: 'packed', contentBlocks: [{ type: 'text', text: 'go' }],
+      })
+
+      // The SDK composes no preset, so a bound directory is the only per-project
+      // composition an embedder gets.
+      expect(mounted).toEqual([storageDir])
+      await server.handleRequest('shutdown', undefined)
+    } finally {
+      await ctx.fiber.dispose()
+      await rm(storageDir, { recursive: true, force: true })
+    }
+  })
+
   it('creates a harness agent and calls the configured OpenAI-compatible endpoint', { timeout: 15_000 }, async () => {
     const storageDir = await mkdtemp(join(tmpdir(), 'dsh-jsonrpc-'))
     const llmServer = await mockCompletionServer()

@@ -31,6 +31,9 @@
     },
     {
       "path": "../../boot/cmdline"
+    },
+    {
+      "path": "../../pack/pack-mount"
     }
   ]
 }

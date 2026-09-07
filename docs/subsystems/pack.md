@@ -14,7 +14,7 @@ The family follows the [capability-seam](../capability-seams.md) split. Only the
 |---|---|---|
 | Service Definition | [`dsh-pack`](../../packages/pack/pack) (`ctx.packs`) | shipped |
 | Service Provider | [`dsh-pack-local`](../../packages/pack/pack-local) for directories on this host; a licensed remote provider remains open | local shipped |
-| Consumer | [`dsh-pack-rules`](../../packages/pack/pack-rules) realizes a pack's rules; a pack's skills reuse [`dsh-skill-filesystem`](../../packages/skill/skill-filesystem) | shipped |
+| Consumer | [`dsh-pack-rules`](../../packages/pack/pack-rules) realizes a pack's rules; a pack's skills reuse [`dsh-skill-filesystem`](../../packages/skill/skill-filesystem) and its hooks reuse [`dsh-hooks-claude-code`](../../packages/hooks/hooks-claude-code) | shipped |
 | Binding | [`dsh-pack-binding`](../../packages/pack/pack-binding) (`ctx.packBindings`) | shipped |
 | Mounting | [`dsh-pack-mount`](../../packages/pack/pack-mount) (`ctx.packMount`), called from the session entry point's agent setup | shipped |
 
@@ -26,7 +26,19 @@ A binding keys on the directory's canonical `fs.realpath`, not on a `WorkspaceId
 
 ## Where a mount happens
 
-`ApiSessionAgentController.composeAgent()` builds the `setup` callback an unpublished agent runs, and calls `ctx.get('packMount')?.mount(agentCtx, cwd)` after the agent preset mounts. Three consequences follow: packs layer over the preset, the composition is fixed before the agent's first request, and a deployment that mounts no pack rows composes exactly as it did before — the optional read answers `undefined` and nothing else changes.
+Every entry point that opens a session calls `ctx.get('packMount')?.mount(agentCtx, cwd)` from the `setup` callback its unpublished agent runs, after any preset mount:
+
+| Entry point | Directory it mounts for |
+|---|---|
+| `ApiSessionAgentController.composeAgent()` — the browser application and everything on the Remote API | the session's `cwd` |
+| `dsh-headless` | the launch working directory |
+| `dsh-acp` | the `newSession` request's `cwd` |
+| `dsh-sdk-server` | the directory named at `initialize` |
+| `dsh-webhook` | the resolved workspace path |
+
+There is no single place to put this, because a `setup` callback is supplied by whoever creates the agent. Repeating the call is what makes a path-keyed binding mean what it says: the same directory composes the same way whichever profile opened it. A profile whose entry point is missing from this list would silently withhold packs, which is the failure the path key exists to prevent.
+
+Three consequences follow: packs layer over the preset, the composition is fixed before the agent's first request, and a deployment that mounts no pack rows composes exactly as it did before — the optional read answers `undefined` and nothing else changes.
 
 ## A pack on disk
 
@@ -37,17 +49,22 @@ viet-truyen/
   pack.yml     display text only; the id is the directory name
   rules/*.md   one prompt section each, in filename order
   skills/      an ordinary skill directory
+  hooks/       hooks.json in the Claude Code dialect, plus the scripts it runs
 ```
 
 `pack.yml` carries display text and nothing else — the id comes from the directory name, exactly as `preset.yml` works, so a locally authored pack cannot claim an id it did not write. A manifest that cannot be parsed degrades to empty metadata rather than hiding the pack, because presentation is not a capability.
 
-Each contribution kind reuses a plugin that already exists rather than adding a second way to deliver it: rules become one `dsh-pack-rules` row carrying their text, and skills become one `dsh-skill-filesystem` row scoped to the pack by `providerName` and `includeDefaultRoots: false`. A pack's `hooks/`, `commands/`, `agents/`, and `mcp.json` have no loader yet.
+Each contribution kind reuses a plugin that already exists rather than adding a second way to deliver it: rules become one `dsh-pack-rules` row carrying their text, skills become one `dsh-skill-filesystem` row scoped to the pack by `providerName` and `includeDefaultRoots: false`, and hooks become one `dsh-hooks-claude-code` row whose `pluginRoot` is the pack directory. A pack's `commands/`, `agents/`, and `mcp.json` have no loader yet.
+
+Rules and skills travel as content — the rule text itself, a skills directory — while hooks travel as a config path. That asymmetry is not an oversight: a hook is a command line whose scripts must exist on the host that runs them, so a hook-bearing pack is filesystem-bound in a way the other kinds are not. A remote provider can serve rules and skills; it cannot serve a hook without also placing its scripts on disk.
 
 ## Why a pack's rows are Cordis rows
 
 A pack's contents are heterogeneous — rules are prompt sections, skills are catalog entries, hooks are shell processes, MCP servers are external connections — and the harness already has one representation that covers all of them: a Cordis plugin row. `PackRow` therefore mirrors an agent preset's `agent.cordis.yml` entry, so a loader that reads a pack's `hooks/`, `commands/`, or `mcp.json` emits rows the existing mount machinery already understands, and no new mounting mechanism is needed.
 
 This works because agent and tool events are scope-dispatched. A row mounted inside a scoped composition receives only the agents in that scope: `scopeTarget` admits an untagged listener globally, admits a listener tagged with a key on the dispatched agent's scope chain, and excludes every other tag ([`packages/core/scope/src/index.ts`](../../packages/core/scope/src/index.ts)). Events travel up the scope chain and never down, so an enclosing composition observes the agents composed under it while a sibling composition sees nothing. `packages/preset/agent-presets/tests/listener-scope.spec.ts` is the executed proof, for both `agent/pre-step` and `tools/pre-execute`.
+
+Hooks are where that mattered most. `dsh-hooks-claude-code` documents "one config applies to the whole process", which reads as an architectural limit and is not one — it describes a bridge mounted at the host level. [`packages/pack/pack-mount/tests/hooks-composition.spec.ts`](../../packages/pack/pack-mount/tests/hooks-composition.spec.ts) runs the real bridge over a real shell in two directories bound to different packs, and each session sees only its own pack's hooks.
 
 ## Identity
 

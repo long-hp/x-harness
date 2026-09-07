@@ -14,7 +14,7 @@
 |---|---|---|
 | Service Definition | [`dsh-pack`](../../packages/pack/pack)（`ctx.packs`） | 已交付 |
 | Service Provider | [`dsh-pack-local`](../../packages/pack/pack-local) 服务本机目录；需授权的远程提供方仍待定 | 本地已交付 |
-| Consumer | [`dsh-pack-rules`](../../packages/pack/pack-rules) 落实 pack 的 rules；pack 的 skills 复用 [`dsh-skill-filesystem`](../../packages/skill/skill-filesystem) | 已交付 |
+| Consumer | [`dsh-pack-rules`](../../packages/pack/pack-rules) 落实 pack 的 rules；pack 的 skills 复用 [`dsh-skill-filesystem`](../../packages/skill/skill-filesystem)，其 hooks 复用 [`dsh-hooks-claude-code`](../../packages/hooks/hooks-claude-code) | 已交付 |
 | Binding | [`dsh-pack-binding`](../../packages/pack/pack-binding)（`ctx.packBindings`） | 已交付 |
 | Mounting | [`dsh-pack-mount`](../../packages/pack/pack-mount)（`ctx.packMount`），由会话入口的 Agent setup 调用 | 已交付 |
 
@@ -26,7 +26,19 @@
 
 ## 挂载发生在哪里
 
-`ApiSessionAgentController.composeAgent()` 构造尚未发布 Agent 所运行的 `setup` 回调，并在 agent preset 挂载之后调用 `ctx.get('packMount')?.mount(agentCtx, cwd)`。由此得出三个结论：pack 层叠在 preset 之上；组装在该 Agent 第一次请求之前即固定；不挂载任何 pack 组合行的部署，其组装方式与此前完全一致——该可选读取返回 `undefined`，别的什么都不变。
+每个打开会话的入口点，都会在其尚未发布的 Agent 所运行的 `setup` 回调中、于任何 preset 挂载之后调用 `ctx.get('packMount')?.mount(agentCtx, cwd)`：
+
+| 入口点 | 它为哪个目录挂载 |
+|---|---|
+| `ApiSessionAgentController.composeAgent()` —— 浏览器应用以及 Remote API 上的一切 | 该会话的 `cwd` |
+| `dsh-headless` | 启动时的工作目录 |
+| `dsh-acp` | `newSession` 请求中的 `cwd` |
+| `dsh-sdk-server` | `initialize` 时指名的目录 |
+| `dsh-webhook` | 解析出的 workspace 路径 |
+
+这件事没有单一的落点，因为 `setup` 回调由创建该 Agent 的一方提供。重复这次调用，正是让「以路径为键的绑定」名副其实的原因：无论哪个 profile 打开，同一个目录都以同样的方式组装。清单中缺席的 profile 会静默地不给出 pack，而那正是路径键要防止的失败。
+
+由此得出三个结论：pack 层叠在 preset 之上；组装在该 Agent 第一次请求之前即固定；不挂载任何 pack 组合行的部署，其组装方式与此前完全一致——该可选读取返回 `undefined`，别的什么都不变。
 
 ## 磁盘上的一个 pack
 
@@ -37,17 +49,22 @@ viet-truyen/
   pack.yml     display text only; the id is the directory name
   rules/*.md   one prompt section each, in filename order
   skills/      an ordinary skill directory
+  hooks/       hooks.json in the Claude Code dialect, plus the scripts it runs
 ```
 
 `pack.yml` 只携带展示文本，别无其他——id 来自目录名，与 `preset.yml` 的做法完全一致，因此本地创作的 pack 无法冒领它没有写过的 id。无法解析的清单退化为空元数据而非隐藏该 pack，因为展示不是一种能力。
 
-每种贡献都复用一个已经存在的插件，而不是新增第二套交付方式：rules 成为一行携带其文本的 `dsh-pack-rules`，skills 成为一行由 `providerName` 与 `includeDefaultRoots: false` 限定到该 pack 的 `dsh-skill-filesystem`。pack 的 `hooks/`、`commands/`、`agents/` 与 `mcp.json` 尚无加载器。
+每种贡献都复用一个已经存在的插件，而不是新增第二套交付方式：rules 成为一行携带其文本的 `dsh-pack-rules`，skills 成为一行由 `providerName` 与 `includeDefaultRoots: false` 限定到该 pack 的 `dsh-skill-filesystem`，hooks 成为一行以该 pack 目录为 `pluginRoot` 的 `dsh-hooks-claude-code`。pack 的 `commands/`、`agents/` 与 `mcp.json` 尚无加载器。
+
+rules 与 skills 以内容的形式传递——rule 文本本身、一个 skills 目录——而 hooks 以配置路径的形式传递。这种不对称并非疏漏：一个 hook 是一条命令行，其脚本必须存在于运行它们的宿主上，因此携带 hook 的 pack 在其他种类所没有的意义上与文件系统绑定。远程提供方可以提供 rules 与 skills；它无法在不把脚本落到磁盘上的前提下提供一个 hook。
 
 ## 为什么 pack 的组合行是 Cordis 行
 
 一个 pack 的内容是异质的——rules 是提示片段，skills 是目录条目，hooks 是 shell 进程，MCP server 是外部连接——而 harness 已经有一种能覆盖全部这些的表示：Cordis 插件行。因此 `PackRow` 参照 agent preset 的 `agent.cordis.yml` 条目，使得读取 pack 的 `hooks/`、`commands/` 或 `mcp.json` 的加载器所产出的行，正是现有挂载机制已经理解的行，无需引入新的挂载机制。
 
 这之所以成立，是因为 agent 与 tool 事件是按 scope 分发的。挂载在有 scope 的组合内部的行，只会收到该 scope 内的 agent：`scopeTarget` 全局放行未打标签的监听器，放行标签位于被分发 agent 的 scope 链上的监听器，并排除其他所有标签（[`packages/core/scope/src/index.ts`](../../packages/core/scope/src/index.ts)）。事件沿 scope 链**向上**流动、从不向下，因此外层组合能观察到在其之下组合出的 agent，而同级组合什么也看不到。`packages/preset/agent-presets/tests/listener-scope.spec.ts` 是已执行的证明，覆盖 `agent/pre-step` 与 `tools/pre-execute` 两者。
+
+hooks 正是这一点最要紧的地方。`dsh-hooks-claude-code` 记载了「一份配置适用于整个进程」，这读起来像一条架构限制，实则不是——它描述的是挂载在宿主层级的桥接。[`packages/pack/pack-mount/tests/hooks-composition.spec.ts`](../../packages/pack/pack-mount/tests/hooks-composition.spec.ts) 在两个绑定了不同 pack 的目录上，用真实 shell 运行真实桥接，而每个会话只看到自己那个 pack 的 hooks。
 
 ## 身份
 

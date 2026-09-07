@@ -11,6 +11,8 @@ import {
   type StopReason,
 } from '@agentclientprotocol/sdk'
 import type { Agent, AgentHandle, AgentOptions, ModelSelection } from '@deepseek-ai/dsh-agent'
+// Carries the Context merge for the optional pack mount in session setup.
+import type {} from '@deepseek-ai/dsh-pack-mount'
 import { createUserMessage, errorChain, type UserMessage } from '@deepseek-ai/dsh-llm'
 import { type Session, type SessionEvent, type SessionId, type TurnEndReason } from '@deepseek-ai/dsh-session'
 import { AcpContentError, admitAcpPrompt } from './content.ts'
@@ -133,6 +135,9 @@ export class AcpSession {
       setup: async (agentCtx) => {
         modelControl.install(agentCtx)
         await mountAcpMcpServers(agentCtx, options.mcpServers, options.cwd)
+        // A directory's packs apply to every profile opened in it. Absent
+        // service means this deployment mounts no pack rows.
+        await ctx.get('packMount')?.mount(agentCtx, options.cwd)
       },
     })
     return new AcpSession(ctx, handle, modelControl, options.notify)

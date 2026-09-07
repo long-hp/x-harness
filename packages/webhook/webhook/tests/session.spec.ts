@@ -15,6 +15,8 @@ interface HarnessOptions {
   failDetach?: boolean
   failDispose?: boolean
   abortAt?: 'workspace' | 'agent'
+  /** Publish `ctx.packMount`; omitted, the deployment mounts no pack rows. */
+  packMount?: boolean
 }
 
 interface SessionHarness {
@@ -74,6 +76,11 @@ function harness(options: HarnessOptions = {}): SessionHarness {
   }
   const fake = {
     logger: { warn: vi.fn() },
+    get(service: string) {
+      return service === 'packMount' && options.packMount === true
+        ? { async mount(_agentCtx: unknown, cwd: string) { calls.push(`pack-mount:${cwd}`) } }
+        : undefined
+    },
     permissionPresets: {
       resolve(name: string) {
         calls.push(`permission-resolve:${name}`)
@@ -215,6 +222,22 @@ describe('webhook Session creation', () => {
         kind: 'webhook', provider: 'github', source: 'primary', deliveryId: 'delivery', ruleId: 'review',
       },
     })
+  })
+
+  it('layers the workspace directory\'s packs over the preset', async () => {
+    const test = harness({ packMount: true })
+    await create(test)
+    // After the preset, so a pack's rows sit above the preset's, and keyed by
+    // the workspace path rather than the request's raw path.
+    expect(test.calls.slice(test.calls.indexOf('agent-create'))).toEqual([
+      'agent-create',
+      'mount:standard',
+      'pack-mount:/workspace',
+      'attach',
+      'permission-set:read-only',
+      'title',
+      'followup',
+    ])
   })
 
   it('uses a complete explicit model without consulting the default', async () => {

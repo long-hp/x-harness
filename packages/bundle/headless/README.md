@@ -61,7 +61,7 @@ The runner is a direct driver over the core API carrier: it creates one fresh Ag
 
 ### Run flow
 
-The runner awaits the complete application (`ctx.get('loader')?.await()`) so the composed tools and adapters are not half-mounted, reads the shared [`agentDefaultModel`](../../core/agent-default-model/README.md) selection, creates one fresh persisted Agent with that provider and model, and submits the task as an ordinary user message. It streams that Agent's non-empty reasoning deltas to stderr, waits for quiescence, then flushes the Session and folds the owned interval (`firstSeq` onward) into the last non-empty `assistant/message` text and final `turn/end` reason. It writes the final text to stdout and requests exit.
+The runner awaits the complete application (`ctx.get('loader')?.await()`) so the composed tools and adapters are not half-mounted, reads the shared [`agentDefaultModel`](../../core/agent-default-model/README.md) selection, creates one fresh persisted Agent with that provider and model, composes the launch directory's bound packs into it, and submits the task as an ordinary user message. It streams that Agent's non-empty reasoning deltas to stderr, waits for quiescence, then flushes the Session and folds the owned interval (`firstSeq` onward) into the last non-empty `assistant/message` text and final `turn/end` reason. It writes the final text to stdout and requests exit.
 
 ### Patch surface over base
 

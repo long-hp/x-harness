@@ -12,6 +12,8 @@ import type { Agent, AgentHandle } from '@deepseek-ai/dsh-agent'
 import { admitEncodedImages, type EncodedImageAttachment, type ImageAttachmentRef } from '@deepseek-ai/dsh-attachment'
 import { createUserMessage, ReasoningEffortId, type ContentBlock, type LlmRuntime } from '@deepseek-ai/dsh-llm'
 import { carrierKeyOf, type Scoped } from '@deepseek-ai/dsh-scope'
+// Carries the Context merge for the optional pack mount in session setup.
+import type {} from '@deepseek-ai/dsh-pack-mount'
 import type { SessionId } from '@deepseek-ai/dsh-session'
 import type SubagentRuntime from '@deepseek-ai/dsh-subagent'
 import type { SubagentRunEndInfo } from '@deepseek-ai/dsh-subagent'
@@ -285,6 +287,9 @@ export class HarnessSdkJsonRpcServer {
         ...this.reasoningEffort === undefined ? {} : { reasoningEffort: this.reasoningEffort },
         ...this.maxTokens === undefined ? {} : { maxTokens: this.maxTokens },
       },
+      // A directory's packs apply to every profile opened in it. Absent
+      // service means this deployment mounts no pack rows.
+      setup: agentCtx => this.ctx.get('packMount')?.mount(agentCtx, this.cwd),
     })
     const rec: SessionRecord = { handle }
     this.sessions.set(sessionId, rec)

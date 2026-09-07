@@ -61,7 +61,7 @@ runner 是核心 API 载体之上的直接驱动器：它通过注册表创建�
 
 ### 运行流程
 
-runner 等待整个应用结算（`ctx.get('loader')?.await()`），确保已组合的工具与适配器不会半挂载，读取共享的 [`agentDefaultModel`](../../core/agent-default-model/README.zh.md) 选择，用该 provider 与模型创建一个全新的持久化 Agent（智能体），并把任务作为普通用户消息提交。它把该 Agent 的非空推理增量流式写入 stderr、等待完全停稳，然后 flush Session，并把所属区间（从 `firstSeq` 起）折叠为最后一条非空 `assistant/message` 文本与最终 `turn/end` 原因。最后，它把最终文本写入 stdout 并请求退出。
+runner 等待整个应用结算（`ctx.get('loader')?.await()`），确保已组合的工具与适配器不会半挂载，读取共享的 [`agentDefaultModel`](../../core/agent-default-model/README.zh.md) 选择，用该 provider 与模型创建一个全新的持久化 Agent（智能体），把启动目录已绑定的 pack 组装进去，并把任务作为普通用户消息提交。它把该 Agent 的非空推理增量流式写入 stderr、等待完全停稳，然后 flush Session，并把所属区间（从 `firstSeq` 起）折叠为最后一条非空 `assistant/message` 文本与最终 `turn/end` 原因。最后，它把最终文本写入 stdout 并请求退出。
 
 ### 叠加在 base 之上的 patch 表层
 

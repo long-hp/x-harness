@@ -50,6 +50,8 @@ kind: "package-reference"
 
 pack 在 agent preset 之后挂载，因此某个 workspace 的 pack 层叠在其 preset 所选的组合之上。
 
+每个打开会话的入口点都会发起这次调用：浏览器应用背后的 Remote 会话控制器，以及 headless 运行器、ACP 桥接、SDK 服务端与 webhook 驱动。这次调用是重复的，因为 `setup` 回调属于创建该 Agent 的一方，而它们之间不存在一个仍在发布之前运行的共享点。新增的入口点若遗漏它，会对一个已绑定 pack 的目录静默地不给出 pack——新增入口点时请核对这份清单。
+
 ### scope 保证
 
 向不带 scope 的上下文挂载会被拒绝，因为它的那些注册会作用于进程中的每一个 Agent。有了 scope，harness 自身的分发完成其余部分：pack 组合行注册的监听器只对该 scope 链上的 Agent 放行，而 pack 的工具与提示片段归入那个 Agent 的注册表层。这正是把一个项目的 pack 挡在另一个项目会话之外的机制。

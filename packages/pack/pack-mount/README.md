@@ -50,6 +50,8 @@ The plugin takes no configuration.
 
 Packs mount after the agent preset, so a workspace's packs layer over the composition its preset chose.
 
+Every entry point that opens a session makes this call: the Remote session controller behind the browser application, plus the headless runner, the ACP bridge, the SDK server, and the webhook driver. The call is repeated because a `setup` callback belongs to whoever creates the agent, and there is no shared point between them that still runs before publication. A new entry point that omits it withholds packs from a directory that has them bound, silently — check this list when adding one.
+
 ### The scope guarantee
 
 A mount into a context that carries no scope is refused, because its registrations would apply to every agent in the process. With a scope, the harness's own dispatch does the rest: a listener registered by a pack row is admitted only for agents on that scope's chain, and a pack's tools and prompt sections file into that agent's registry layer. That is what keeps one project's packs out of another project's sessions.

@@ -158,6 +158,22 @@ describe('headless runner', () => {
     await test.ctx.fiber.dispose()
   })
 
+  it('composes the launch directory\'s packs before the first prompt', async () => {
+    const mounted: string[] = []
+    const test = await bench({
+      afterPrompt: (session, message) => { appendTurn(session, 1, message, 'answered', true) },
+    })
+    test.ctx.provide('packMount', {
+      mount: (_agentCtx: unknown, cwd: string) => { mounted.push(cwd); return Promise.resolve() },
+    } as never)
+
+    expect(await test.run()).toMatchObject({ code: 0, out: 'answered\n' })
+    // A directory's packs reach a headless run as they reach a browser session,
+    // which is what the path-keyed binding exists for.
+    expect(mounted).toEqual([process.cwd()])
+    await test.ctx.fiber.dispose()
+  })
+
   it('waits for asynchronously appended events instead of racing Agent idleness', async () => {
     const test = await bench({
       afterPrompt: async (session, message) => {

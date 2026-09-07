@@ -52,6 +52,7 @@
     "@deepseek-ai/dsh-agent": "workspace:^",
     "@deepseek-ai/dsh-agent-default-model": "workspace:^",
     "@deepseek-ai/dsh-llm": "workspace:^",
+    "@deepseek-ai/dsh-pack-mount": "workspace:^",
     "@deepseek-ai/dsh-session": "workspace:^"
   },
   "devDependencies": {
@@ -60,6 +61,7 @@
     "@deepseek-ai/dsh-agent": "workspace:^",
     "@deepseek-ai/dsh-agent-default-model": "workspace:^",
     "@deepseek-ai/dsh-llm": "workspace:^",
+    "@deepseek-ai/dsh-pack-mount": "workspace:^",
     "@deepseek-ai/dsh-session": "workspace:^"
   }
 }

@@ -1,5 +1,5 @@
 ---
-description: "从本地目录提供 pack：pack.yml 清单、rules/ 与 skills/ 布局、根目录优先级，以及一个 pack 所产出的组合行。"
+description: "从本地目录提供 pack：pack.yml 清单、rules/、skills/ 与 hooks/ 布局、根目录优先级，以及一个 pack 所产出的组合行。"
 kind: "package-reference"
 ---
 
@@ -9,7 +9,7 @@ kind: "package-reference"
 
 ## 概述
 
-`@deepseek-ai/dsh-pack-local` 让本机上的一个目录成为用户可以为某个项目开启的 pack。把它指向一个或多个根目录；每个持有 `pack.yml` 的子目录都会成为被列出的 pack，其 id 取自目录名，其展示文本取自清单。当一个 pack 被加载时，本包把它的 `rules/*.md` 与 `skills/` 内容转成已绑定会话所挂载的组合行，复用既有的 rule 与 skill 插件，而不是为两者各自发明第二套交付方式。你想要区分的每个来源挂载一个实例——例如内置 pack 与用户自己的 pack——因为提供方名字与根目录优先级都是按实例设置的。
+`@deepseek-ai/dsh-pack-local` 让本机上的一个目录成为用户可以为某个项目开启的 pack。把它指向一个或多个根目录；每个持有 `pack.yml` 的子目录都会成为被列出的 pack，其 id 取自目录名，其展示文本取自清单。当一个 pack 被加载时，本包把它的 `rules/*.md`、`skills/` 与 `hooks/hooks.json` 内容转成已绑定会话所挂载的组合行，复用既有的 rule、skill 与 hook 插件，而不是为它们各自发明第二套交付方式。你想要区分的每个来源挂载一个实例——例如内置 pack 与用户自己的 pack——因为提供方名字与根目录优先级都是按实例设置的。
 
 ## 目录
 
@@ -61,6 +61,9 @@ kind: "package-reference"
       2-length.md
     skills/
       outline/SKILL.md    an ordinary skill directory
+    hooks/
+      hooks.json          Claude Code hook config, read by the existing bridge
+      check.sh            reached from a command through ${CLAUDE_PLUGIN_ROOT}
 ```
 
 id 是目录名——上例中的 `viet-truyen`——而绝不是 `pack.yml` 内的某个字段，因此本地创作的 pack 无法冒领它没有写过的 id。名字不是 kebab-case 的目录会被跳过，不持有 `pack.yml` 的目录同样如此。
@@ -84,10 +87,13 @@ id 是目录名——上例中的 `viet-truyen`——而绝不是 `pack.yml` 内
 |---|---|
 | `rules/*.md` | 一行 [`dsh-pack-rules`](../pack-rules/README.zh.md)，其片段携带每个文件的文本，命名为 `pack:<id>:<文件名>` |
 | `skills/`（非空） | 一行 [`dsh-skill-filesystem`](../../skill/skill-filesystem/README.zh.md) 指向该目录，附带 `includeDefaultRoots: false` 与 `providerName: pack:<id>` |
+| `hooks/hooks.json` | 一行 [`dsh-hooks-claude-code`](../../hooks/hooks-claude-code/README.zh.md)，其 `pluginRoot` 即该 pack 目录 |
 
-rules 在 skills 之前。只读取 `rules/` 直接子级的 `.md` 文件——不递归——超过 `maxRuleBytes` 的文件被跳过而非截断，因为半条指令比没有指令更糟。两者都不携带的 pack 仍会被列出：一旦它有了内容，绑定它就是有意义的操作。
+组合行就按这个顺序产出。只读取 `rules/` 直接子级的 `.md` 文件——不递归——超过 `maxRuleBytes` 的文件被跳过而非截断，因为半条指令比没有指令更糟。三者都不携带的 pack 仍会被列出：一旦它有了内容，绑定它就是有意义的操作。
 
-挂载已绑定 pack 的组合还必须能解析到 `dsh-pack-rules` 与 `dsh-skill-filesystem`，因为它们正是所生成组合行携带的模块名。
+hook 行把 `pluginRoot` 设为该 pack 目录，因此为 Claude Code 编写的 pack 无需改动即可通过 `${CLAUDE_PLUGIN_ROOT}` 抵达自己的脚本。它不设置 `projectDir`：`CLAUDE_PROJECT_DIR` 于是在每次运行时默认取该会话自己的工作目录——对已绑定的 pack 而言，那是它被开启所服务的那个项目，而不是 pack 自身的目录。
+
+挂载已绑定 pack 的组合还必须能解析到 `dsh-pack-rules`、`dsh-skill-filesystem` 与 `dsh-hooks-claude-code`，因为它们正是所生成组合行携带的模块名。
 
 ### 跨根目录的优先级
 
@@ -111,6 +117,8 @@ rules 在 skills 之前。只读取 `rules/` 直接子级的 `.md` 文件——�
 
 rules 携带文本而非路径，使同一个 `PackDefinition` 形状对没有文件系统的提供方同样成立。该决定属于 seam 而非本包；在这里它只意味着 rule 文件在 `get()` 期间被读取，而不是在其中被命名。
 
+hooks 是例外，且是刻意的：一个 hook 就是一条命令行，而 pack 的命令运行的是它自己的脚本。那些脚本必须存在于运行它们的宿主上，因此携带 hook 的 pack 无论提供方如何处理它其余的内容，都是与文件系统绑定的。所以该行携带配置路径，由桥接去读取它。
+
 发现不做记忆化。`list()` 在每次注册表未命中时重扫其根目录，而注册表自身的缓存正是防止这件事逐次读取发生的东西。
 
 ### 源码地图
@@ -131,6 +139,7 @@ rules 携带文本而非路径，使同一个 `PackDefinition` 形状对没有�
 - [dsh-pack](../pack/README.zh.md) —— 本提供方注册到的注册表，以及它参与的优先级规则。
 - [dsh-pack-rules](../pack-rules/README.zh.md) —— pack 的 `rules/` 所变成的那一行。
 - [dsh-skill-filesystem](../../skill/skill-filesystem/README.zh.md) —— pack 的 `skills/` 所变成的那一行。
+- [dsh-hooks-claude-code](../../hooks/hooks-claude-code/README.zh.md) —— pack 的 `hooks/hooks.json` 所变成的那一行，以及它覆盖的各个事件。
 - [Pack 子系统](../../../docs/subsystems/pack.zh.md) —— 该家族以及围绕本提供方的各个角色。
 
 -----
@@ -142,11 +151,11 @@ rules 携带文本而非路径，使同一个 `PackDefinition` 形状对没有�
 
 #### 模型看到什么
 
-直接层面什么都没有。本包产出组合行；已挂载的行贡献了什么，属于那一行自己的契约——`dsh-pack-rules` 负责 pack 的 rules 所成为的提示片段，`dsh-skill-filesystem` 负责其目录所发布的 skills。发现过程、清单与根目录优先级从不抵达请求。
+直接层面什么都没有。本包产出组合行；已挂载的行贡献了什么，属于那一行自己的契约——`dsh-pack-rules` 负责 pack 的 rules 所成为的提示片段，`dsh-skill-filesystem` 负责其目录所发布的 skills，`dsh-hooks-claude-code` 负责某个 hook 所返回的上下文或决策。发现过程、清单与根目录优先级从不抵达请求。
 
 #### Token 影响
 
-直接层面为零。本包产出的组合行承担开销：rules 把其文本加入被绑定 scope 内的每次请求，skills 把其名字与描述加入该会话的 skill 目录。
+直接层面为零。本包产出的组合行承担开销：rules 把其文本加入被绑定 scope 内的每次请求，skills 把其名字与描述加入该会话的 skill 目录，而某个 hook 的 `additionalContext` 会给运行它的那一轮加上一条消息。
 
 #### KV 缓存影响
 
@@ -159,11 +168,13 @@ rules 携带文本而非路径，使同一个 `PackDefinition` 形状对没有�
 这些限制界定本提供方到此为止。它们是当前的包约束，不是任务清单。
 
 - **没有监听** —— 新增、编辑或删除一个 pack 目录不会使注册表的目录失效。界面只有在别的东西使其失效之后才会看到变化，因此目前创作一个 pack 需要重启才能出现。
-- **只读取 rules 与 skills** —— pack 的 `hooks/`、`commands/`、`agents/` 与 `mcp.json` 被忽略：那些加载器尚不存在，因此把它们放进 pack 会悄无声息地不产生任何贡献。
+- **`commands/`、`agents/` 与 `mcp.json` 被忽略** —— 那些加载器尚不存在，因此把它们放进 pack 会悄无声息地不产生任何贡献。
+- **pack 的 hooks 只能抵达桥接覆盖的那些事件** —— `dsh-hooks-claude-code` 实现了七个 Claude Code hook 事件；`hooks.json` 中命名其他事件的 pack，其该条目会被丢弃，而此处不给出任何诊断。
+- **`hooks.json` 无法解析时仍会产出 hook 行** —— 本包只检查该文件可读，因此格式错误的配置会产出一行不注册任何 hook 的组合行，改由桥接发出警告。
 - **`rules/` 下不递归** —— 只读取该目录直接子级的 `.md` 文件；嵌套的 rules 文件夹不可见，也没有任何诊断。
 - **超限的 rule 文件被静默丢弃** —— 它被跳过而非截断，但没有任何东西告诉用户是哪个文件超过了 `maxRuleBytes`。
 - **丢失清单的 pack 会消失** —— `pack.yml` 是标志，因此删除它会使该 pack 不再被列出，而不是报告一个丢失了元数据的 pack。
-- **没有任何东西验证所生成的行模块可解析** —— 缺少 `dsh-pack-rules` 或 `dsh-skill-filesystem` 的组合会在已绑定 pack 挂载时失败，而不是在其 pack 于此处被列出时失败。
+- **没有任何东西验证所生成的行模块可解析** —— 缺少 `dsh-pack-rules`、`dsh-skill-filesystem` 或 `dsh-hooks-claude-code` 的组合会在已绑定 pack 挂载时失败，而不是在其 pack 于此处被列出时失败。
 
 <a id="dev-note"></a>
 ### 开发备注

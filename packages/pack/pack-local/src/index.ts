@@ -21,7 +21,7 @@ import { buildRows } from './rows.ts'
 
 export { MANIFEST_FILE, readManifest, scanRoot } from './discovery.ts'
 export type { DiscoveredPack, PackManifest } from './discovery.ts'
-export { RULES_DIR, SKILLS_DIR } from './rows.ts'
+export { HOOKS_DIR, HOOKS_FILE, RULES_DIR, SKILLS_DIR } from './rows.ts'
 
 /** Precedence a root's packs carry when another provider publishes the same id. */
 const DEFAULT_ROOT_RANK = 300

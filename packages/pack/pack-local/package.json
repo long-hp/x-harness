@@ -1,6 +1,6 @@
 {
   "name": "@deepseek-ai/dsh-pack-local",
-  "description": "Serves packs from local directories to the DeepSeek Harness pack registry, reading each pack's manifest, rules, and skills",
+  "description": "Serves packs from local directories to the DeepSeek Harness pack registry, reading each pack's manifest, rules, skills, and hooks",
   "version": "0.1.3-alpha.1",
   "publishConfig": {
     "access": "public"
@@ -28,6 +28,7 @@
   "license": "MIT",
   "peerDependencies": {
     "@deepseek-ai/cordis": "workspace:^",
+    "@deepseek-ai/dsh-hooks-claude-code": "workspace:^",
     "@deepseek-ai/dsh-pack": "workspace:^",
     "@deepseek-ai/dsh-pack-rules": "workspace:^",
     "@deepseek-ai/dsh-skill-filesystem": "workspace:^"
@@ -38,6 +39,7 @@
   },
   "devDependencies": {
     "@deepseek-ai/cordis": "workspace:^",
+    "@deepseek-ai/dsh-hooks-claude-code": "workspace:^",
     "@deepseek-ai/dsh-pack": "workspace:^",
     "@deepseek-ai/dsh-pack-rules": "workspace:^",
     "@deepseek-ai/dsh-skill-filesystem": "workspace:^",

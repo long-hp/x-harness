@@ -9,6 +9,7 @@ import type {} from '@deepseek-ai/dsh-agent-default-model'
 import type {} from '@deepseek-ai/dsh-agent-presets'
 import { boundContextSummary, createUserMessage, errorChain, type LlmCallConfig } from '@deepseek-ai/dsh-llm'
 import type {} from '@deepseek-ai/dsh-permission-presets'
+import type {} from '@deepseek-ai/dsh-pack-mount'
 import type { SessionId } from '@deepseek-ai/dsh-session'
 import type {} from '@deepseek-ai/dsh-session-title'
 import type {} from '@deepseek-ai/dsh-workspace'
@@ -141,6 +142,9 @@ export async function createWebhookSession(
     setup: async (agentCtx) => {
       await ctx.agentPresets.mount(agentCtx, preset.id)
       installInitialModelSelection(agentCtx, resolved.modelSelection)
+      // The workspace's packs layer over the preset, as they do for a browser
+      // session. Absent service means this deployment mounts no pack rows.
+      await ctx.get('packMount')?.mount(agentCtx, workspace.path)
     },
   })
 

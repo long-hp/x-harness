@@ -20,12 +20,12 @@ Tài liệu phân tích khoảng cách (gap analysis) cho 3 yêu cầu:
 | Lái trực tiếp ChatGPT/Gemini web UI | ❌ Chưa có + vi phạm ToS + rất dễ vỡ | Lớn, rủi ro cao |
 | **Rules** (`AGENTS.md`, prompt section, persona) | ✅ Đã có, đã per-project | 0 code |
 | **Skills** (`.md` + scripts, `/name`) | ✅ Đã có đầy đủ, đã per-project | 0 code |
-| **Hooks** (format Claude Code `hooks.json`) | ✅ Có bridge đúng dialect — nhưng **1 config cho cả process, đọc 1 lần lúc khởi động** | Trung bình |
+| **Hooks** (format Claude Code `hooks.json`) | ✅ **XONG** — bridge đúng dialect, và pack mount nó theo từng thư mục dự án | 0 code |
 | **Commands** kiểu `commands/*.md` | ⚠️ Có `/name` của skill (~80%); `ctx.commands` là code, không phải `.md` | Nhỏ–Trung bình |
 | **Subagents** kiểu `agents/*.md` | ⚠️ Có `tool-subagent` với `persona`/`toolFilter`/`agentOptions` nhưng khai bằng cordis config, không phải `.md` | Trung bình |
 | **MCP servers** kiểu `.mcp.json` | ⚠️ Có `mcp-client` (1 row/server), chưa đọc được `.mcp.json` | Nhỏ |
 | **Gói tất cả thành 1 "plugin" có manifest** | ❌ Chưa có | Trung bình |
-| **Gắn plugin vào 1 workspace/dự án** | ❌ Chưa có (preset là per-session, roots là per-home) | **Trung bình — phần cốt lõi** |
+| **Gắn plugin vào 1 workspace/dự án** | ✅ **XONG** — `pack-binding` + `pack-mount`, khoá theo đường dẫn chuẩn hoá | 0 code |
 | Màn hình quản lý/bật-tắt plugin trong app | ❌ Chưa có (mới có settings section cho preset) | Trung bình |
 | Tài khoản / entitlement / khoá plugin theo gói | ❌ **Hoàn toàn chưa có** | Lớn |
 | "Chỉ mình tôi tạo được plugin" | ❌ Chưa có | Trung bình |
@@ -150,7 +150,7 @@ Giới hạn đã ghi sẵn: flow **không resumable** — reload trang giữa l
 |---|---|---|
 | `CLAUDE.md` / rules | `packages/context/agent-instructions/` đọc `AGENTS.md`/`CLAUDE.md` theo workspace; `ctx.systemPrompt.section()`; `packages/preset/persona/` | ✅ đủ |
 | `skills/<name>/SKILL.md` + scripts | `packages/skill/` — registry `ctx.skills`, provider filesystem quét `<projectRoot>/.dsh/skills`, `.agents/skills`, `<dshHome>/skills`; `SkillResourceBase` cho scripts/assets; watcher chokidar; `/name` invocation | ✅ đủ |
-| `hooks/hooks.json` | `packages/hooks/hooks-claude-code/` — **đúng dialect Claude Code**, map sang `agent/session-start`, `agent/pre-step`, `tools/pre-execute`, `tools/post-execute`, `agent/turn-stopping`, `subagent/start|end` | ⚠️ format đúng, **scope sai**: *"One config applies to the whole process: it is read once at startup"*; 7/30 hook event được hỗ trợ |
+| `hooks/hooks.json` | `packages/hooks/hooks-claude-code/` — **đúng dialect Claude Code**, map sang `agent/session-start`, `agent/pre-step`, `tools/pre-execute`, `tools/post-execute`, `agent/turn-stopping`, `subagent/start\|end` | ✅ **XONG** (3d). Pack mount bridge trong scope của session → hook chỉ chạy cho thư mục được bind. Còn lại: 7/30 hook event được hỗ trợ |
 | `commands/*.md` | Skill có `user-invocable` → gõ `/name` là host inject `<skill_content>`; `ctx.commands` dành cho lệnh viết bằng code | ⚠️ ~80%. Thiếu `$ARGUMENTS`, frontmatter `allowed-tools`, `model` |
 | `agents/*.md` (subagent) | `packages/subagent/tool-subagent/` nhận `persona`, `toolFilter`, `agentOptions`, `maxDepth` — nhưng khai bằng cordis config | ⚠️ đủ khả năng, thiếu loader `.md` |
 | `.mcp.json` | `packages/mcp/mcp-client/` — 1 row cordis mỗi server, `serverName` unique **trong một registration scope** | ⚠️ thiếu loader từ `.mcp.json` |
@@ -202,7 +202,7 @@ Sự kiện chảy **lên** chuỗi scope, không bao giờ chảy xuống: comp
 
 Tóm lại: **"add plugin X cho dự án A" = mount composition của X vào scope của session thuộc dự án A.** Máy móc đã đủ và đã chứng minh; thiếu là (i) định dạng gói, (ii) chỗ lưu ràng buộc workspace↔plugin, (iii) UI.
 
-**Một điều spike CHƯA chứng minh:** bản thân `dsh-hooks-claude-code` mount trong preset thì chạy đúng — spike dùng một fixture row đăng ký đúng các listener mà bridge dùng, chứ không mount chính bridge (bridge cần `ctx.shell` + `sessionProjections`, và đọc file config). Rủi ro còn lại thấp nhưng khác 0; nên xác nhận ở đầu Phase 3d khi viết loader `hooks/`.
+~~**Một điều spike CHƯA chứng minh:**~~ → **ĐÃ CHỨNG MINH.** `packages/pack/pack-mount/tests/hooks-composition.spec.ts` mount chính `dsh-hooks-claude-code` (không phải fixture) qua provider thật, chạy hook shell thật: hai thư mục bind hai pack khác nhau, mỗi session chỉ thấy hook của pack mình; chỉ session được bind mới ghi cặp `hook/invoked`/`hook/result`.
 
 ### 3.4 Kiến trúc đề xuất
 
@@ -264,7 +264,7 @@ Tạo session mới trong dự án A
 
 | Việc | Chi tiết |
 |---|---|
-| Hook per-scope | Không sửa `hooks-claude-code`; chỉ mount một instance của nó **trong composition của pack**, `configPath` trỏ vào `hooks/hooks.json` của pack, `pluginRoot` trỏ vào thư mục pack. Cần xác minh bằng test rằng listener thật sự chỉ chạy trong scope (phân tích tĩnh nói có, nhưng đây là điểm phải chứng minh bằng test trước khi xây tiếp) |
+| ~~Hook per-scope~~ ✅ **XONG** | Không sửa `hooks-claude-code`; `pack-local` sinh row trỏ `configPath` vào `hooks/hooks.json` của pack và `pluginRoot` vào thư mục pack. `projectDir` để trống nên `CLAUDE_PROJECT_DIR` mặc định là thư mục dự án được bind, không phải thư mục pack |
 | `commands/*.md` | Loader biến mỗi file thành skill `user-invocable: true`, `disable-model-invocation: true`. Cần thêm khai triển `$ARGUMENTS` — hiện `/name` chỉ inject nguyên văn body |
 | `agents/*.md` | Loader sinh row `tool-subagent` với `persona` + `toolFilter` + `agentOptions` từ frontmatter |
 | `.mcp.json` | Loader sinh mỗi server một row `mcp-client` |
@@ -344,7 +344,17 @@ setup: async (agentCtx) => {
 },
 ```
 
-Tổng cộng ~5 dòng đổi ở 2 file (`agent.ts` 4 call site, `commands.ts:249` 1 call site). Dùng `ctx.get('packs')?` để composition không mount pack vẫn chạy nguyên vẹn — đúng luật "misconfiguration fails loud, absence is explicit".
+**Đã làm, và rộng hơn dự tính.** `composeAgent()` chỉ phục vụ `session-controller`, mà package đó **chỉ có trong bundle `web-app`**. Nên sửa mình `agent.ts` thì headless / ACP / SDK / webhook vẫn im lặng không có pack — đúng cái lỗ rò mà đường "zero-edit" bị loại vì nó. Kết quả: gọi `ctx.get('packMount')?.mount(agentCtx, cwd)` ở **cả 5 entry point**:
+
+| Entry point | Thư mục nó mount cho |
+|---|---|
+| `ApiSessionAgentController.composeAgent()` | `cwd` của session (web app + Remote API) |
+| `dsh-headless` | thư mục lúc khởi chạy |
+| `dsh-acp` | `cwd` trong request `newSession` |
+| `dsh-sdk-server` | thư mục khai lúc `initialize` |
+| `dsh-webhook` | đường dẫn workspace đã resolve |
+
+Không gom về một chỗ được vì `setup` là callback do **bên tạo agent** cung cấp, và giữa chúng không có điểm chung nào còn chạy trước lúc publish. Lặp lại lời gọi chính là thứ làm cho khoá-theo-đường-dẫn đúng như tên gọi. Dùng `ctx.get('packMount')?` để composition không mount pack vẫn chạy nguyên vẹn — đúng luật "misconfiguration fails loud, absence is explicit".
 
 -----
 
@@ -356,9 +366,9 @@ Tổng cộng ~5 dòng đổi ở 2 file (`agent.ts` 4 call site, `commands.ts:2
 | **1** | Đổi default model, disable row DeepSeek, thay brand plugin | Không còn mặc định DeepSeek | 1–2 ngày |
 | **2** | Mount `dsh-authorization` + Remote + nút Sign in vào `settings.models.provider-card` | Đăng nhập ChatGPT (Codex) từ UI | 3–5 ngày |
 | **3a** | ✅ **XONG** — `packages/preset/agent-presets/tests/listener-scope.spec.ts`: chứng minh listener của một preset row chỉ nhận agent trong scope, cho cả `agent/pre-step` lẫn `tools/pre-execute` | Nền tảng đã xác nhận | đã xong |
-| **3b** | ✅ **XONG** — `ctx.packs`, `pack-local`, `pack-rules`, `pack-binding` (khoá theo đường dẫn chuẩn hoá, không theo `WorkspaceId`), `pack-mount` + nối vào `composeAgent`. 5 package, 103 test, coverage 100% | Bật pack cho thư mục → phiên mới trong đó có rules/skills/tools của pack | đã xong |
+| **3b** | ✅ **XONG** — `ctx.packs`, `pack-local`, `pack-rules`, `pack-binding` (khoá theo đường dẫn chuẩn hoá, không theo `WorkspaceId`), `pack-mount` + nối vào cả 5 entry point (web/Remote, headless, ACP, SDK, webhook). 5 package, coverage 100% | Bật pack cho thư mục → phiên mới trong đó có rules/skills/hooks của pack, ở mọi profile | đã xong |
 | **3c** | `ui-packs`: màn hình Plugins, bật/tắt theo dự án | Thao tác được trên app | 1 tuần |
-| **3d** | Loader cho `hooks/`, `commands/*.md`, `agents/*.md`, `mcp.json` | Pack đầy đủ như Claude Code | 1–2 tuần |
+| **3d** | ✅ **hooks XONG** — `hooks/hooks.json` thành row `dsh-hooks-claude-code`, chứng minh bằng test composition thật. Còn `commands/*.md`, `agents/*.md`, `mcp.json` | Pack đầy đủ như Claude Code | còn 1 tuần |
 | **4** | `ctx.entitlements` + `entitlement-license` + ký pack | Khoá/mở theo license | 1–2 tuần |
 | **5** | `pack-remote` + auth tài khoản ở webserver + settings per-account | Bán theo gói thật | 2–4 tuần, phụ thuộc quyết định deploy |
 | **6** | *(tuỳ chọn, rủi ro cao)* `llm-browser-bridge` trong `packages/experimental/` | ChatGPT/Gemini web làm LLM | 2–3 tuần + bảo trì |

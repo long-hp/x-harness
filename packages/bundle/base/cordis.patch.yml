@@ -292,9 +292,10 @@
     # Packs: behavior a user turns on for one project directory. The registry
     # and the mount cost nothing until a directory has a pack bound, and the
     # binding is keyed by canonical path so a session opened in that directory
-    # composes the same way from every profile. `dsh-pack-rules` is a dependency
-    # of this bundle without a row of its own: `dsh-pack-local` names it in the
-    # rows it generates, which resolve from here.
+    # composes the same way from every profile. `dsh-pack-rules` and
+    # `dsh-hooks-claude-code` are dependencies of this bundle without rows of
+    # their own: `dsh-pack-local` names them in the rows it generates, which
+    # resolve from here.
     - id: pack
       name: '@deepseek-ai/dsh-pack'
 

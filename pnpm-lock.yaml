@@ -607,6 +607,9 @@ importers:
       '@deepseek-ai/dsh-mcp-client':
         specifier: workspace:^
         version: link:../../mcp/mcp-client
+      '@deepseek-ai/dsh-pack-mount':
+        specifier: workspace:^
+        version: link:../../pack/pack-mount
       '@deepseek-ai/dsh-session':
         specifier: workspace:^
         version: link:../../core/session
@@ -1116,6 +1119,9 @@ importers:
       '@deepseek-ai/dsh-goal-round-driver':
         specifier: workspace:^
         version: link:../../goal/goal-round-driver
+      '@deepseek-ai/dsh-hooks-claude-code':
+        specifier: workspace:^
+        version: link:../../hooks/hooks-claude-code
       '@deepseek-ai/dsh-jobs-local':
         specifier: workspace:^
         version: link:../../jobs/jobs-local
@@ -1358,6 +1364,9 @@ importers:
       '@deepseek-ai/dsh-llm':
         specifier: workspace:^
         version: link:../../llm/llm
+      '@deepseek-ai/dsh-pack-mount':
+        specifier: workspace:^
+        version: link:../../pack/pack-mount
       '@deepseek-ai/dsh-session':
         specifier: workspace:^
         version: link:../../core/session
@@ -6618,6 +6627,9 @@ importers:
       '@deepseek-ai/cordis':
         specifier: workspace:^
         version: link:../../../vendor/cordis
+      '@deepseek-ai/dsh-hooks-claude-code':
+        specifier: workspace:^
+        version: link:../../hooks/hooks-claude-code
       '@deepseek-ai/dsh-pack':
         specifier: workspace:^
         version: link:../pack
@@ -7008,6 +7020,9 @@ importers:
       '@deepseek-ai/dsh-llm-deepseek':
         specifier: workspace:^
         version: link:../../llm/llm-deepseek
+      '@deepseek-ai/dsh-pack-mount':
+        specifier: workspace:^
+        version: link:../../pack/pack-mount
       '@deepseek-ai/dsh-scope':
         specifier: workspace:^
         version: link:../../core/scope
@@ -9741,6 +9756,9 @@ importers:
       '@deepseek-ai/dsh-llm':
         specifier: workspace:^
         version: link:../../llm/llm
+      '@deepseek-ai/dsh-pack-mount':
+        specifier: workspace:^
+        version: link:../../pack/pack-mount
       '@deepseek-ai/dsh-permission-presets':
         specifier: workspace:^
         version: link:../../interaction/permission-presets

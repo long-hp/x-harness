@@ -26,17 +26,21 @@ Status: implemented
 | `dsh-pack-binding`（`ctx.packBindings`） | 持久化的「目录 → pack」记录 |
 | `dsh-pack-mount`（`ctx.packMount`） | 读取绑定，并把组合行挂载到某一个 Agent 的 scope 之下 |
 
-`ApiSessionAgentController.composeAgent()` 在尚未发布 Agent 的 `setup` 中、于 preset 挂载之后调用 `ctx.get('packMount')?.mount(agentCtx, cwd)`。不挂载任何 pack 组合行的部署在那里读到 `undefined`，组装方式与此前完全一致。
+每个打开会话的入口点，都会在尚未发布 Agent 的 `setup` 中、于任何 preset 挂载之后调用 `ctx.get('packMount')?.mount(agentCtx, cwd)`：`ApiSessionAgentController.composeAgent()` 服务浏览器应用与 Remote API，`dsh-headless` 服务其启动目录，`dsh-acp` 服务 `newSession` 的 cwd，`dsh-sdk-server` 服务 `initialize` 时指名的目录，`dsh-webhook` 服务解析出的 workspace 路径。不挂载任何 pack 组合行的部署在那里读到 `undefined`，组装方式与此前完全一致。
 
-这些组合行位于 [`dsh-base`](../../../../packages/bundle/base/cordis.patch.yml) 而非浏览器 bundle，因此每个以 base 为底的 profile 都会组装 pack——这正是下文以路径为键的绑定的意义所在。`dsh-pack-local` 扫描 `<dshHome>/packs`。`dsh-pack-rules` 是该 bundle 的依赖却没有自己的行，因为 `dsh-pack-local` 在它生成的组合行中指名了它，而那些行从该 bundle 解析。
+这次调用是重复的而非集中的，因为 `setup` 回调属于创建该 Agent 的一方；它们之间不存在一个仍在发布之前运行的共享点。这种重复正是让路径键名副其实的原因——清单中被漏掉的 profile 会对一个已绑定 pack 的目录静默地不给出 pack，而那恰恰是选用该键所要防止的失败。
+
+这些组合行位于 [`dsh-base`](../../../../packages/bundle/base/cordis.patch.yml) 而非浏览器 bundle，因此每个以 base 为底的 profile 都能够组装 pack——这正是下文以路径为键的绑定的意义所在。`dsh-pack-local` 扫描 `<dshHome>/packs`。`dsh-pack-rules` 是该 bundle 的依赖却没有自己的行，因为 `dsh-pack-local` 在它生成的组合行中指名了它，而那些行从该 bundle 解析。
 
 ### pack 的内容成为 Cordis 组合行
 
 pack 的内容是异质的——rules 是提示片段，skills 是目录条目，hooks 是 shell 进程，MCP server 是外部连接——而 harness 已经有一种覆盖全部这些的表示：Cordis 插件行。因此 `PackRow` 参照 `agent.cordis.yml` 条目，挂载复用 Loader 自身的 entry 机制，而不是为安装任何东西新增第二套方式。
 
-每种贡献都复用一个已经存在的插件。skills 成为一行 `dsh-skill-filesystem`，带 `providerName: pack:<id>` 与 `includeDefaultRoots: false`，这已足以把一个实例限定到一个 pack 而无需改动那个包。只有 rules 需要新的 Consumer：`dsh-persona` 每个 scope 只有一条、第二条会冲突，而 `dsh-agent-instructions` 在**会话**的工作目录下发现文件，那恰恰不是 pack rules 所在之处。
+每种贡献都复用一个已经存在的插件。skills 成为一行 `dsh-skill-filesystem`，带 `providerName: pack:<id>` 与 `includeDefaultRoots: false`，这已足以把一个实例限定到一个 pack 而无需改动那个包。hooks 成为一行 `dsh-hooks-claude-code`，其 `pluginRoot` 设为该 pack 目录，因此为 Claude Code 编写的 pack 无需改动即可运行。只有 rules 需要新的 Consumer：`dsh-persona` 每个 scope 只有一条、第二条会冲突，而 `dsh-agent-instructions` 在**会话**的工作目录下发现文件，那恰恰不是 pack rules 所在之处。
 
 rules 以文本而非文件路径传递，因为一个 pack 可能来自远程提供方，挂载进程没有可读的文件系统。这正是让同一个 `PackDefinition` 形状日后也能服务需授权远程来源的原因。
+
+hooks 是刻意的例外，以配置路径传递。一个 hook 是一条命令行，而 pack 所携带的命令通过 `${CLAUDE_PLUGIN_ROOT}` 运行它自己的脚本；那些脚本必须存在于运行它们的宿主上。因此携带 hook 的 pack 无论提供方如何处理它其余的内容，都是与文件系统绑定的；把该文件的字节放进组合行不会带来任何好处，反而会迫使桥接多长出第二种输入。
 
 ### 绑定以规范目录路径为键
 
@@ -62,6 +66,8 @@ rules 以文本而非文件路径传递，因为一个 pack 可能来自远程�
 
 ## Consequences
 
+**pack 的 hooks 由桥接被挂载在何处来限定 scope，而不是由桥接自身做了什么。** `dsh-hooks-claude-code` 什么都没改。它 README 中的限制——一份配置适用于整个进程、启动时读取一次——对宿主层级的挂载依然成立，而那根本不是 pack 所做的事。这正是组合行表示所换来的普适形态：某个既有插件的「按目录」版本，是一个挂载选择。
+
 **pack 的贡献在会话创建时即固定。** 挂载在 `setup` 中只运行一次，在该 Agent 发布之前、因而也在它第一次请求之前。开启或关闭一个 pack 影响的是此后创建的会话；正在运行的会话保持它开始时的状态。这与 preset 的规则一致，也正是让一个会话已记录的工具调用仍可由它自己的组装发起的原因。
 
 **绑定到同一目录的两个 pack 不可能在行 id 上冲突。** 每一行都以 `<packId>.<rowId>` 挂载，两个 pack 都不必知道对方把自己的行叫什么。
@@ -80,8 +86,10 @@ scope 保证是被证明的，而不是被假定的。[`packages/preset/agent-pr
 
 [`packages/pack/pack-mount/tests/composition.spec.ts`](../../../../packages/pack/pack-mount/tests/composition.spec.ts) 从一个 Loader entry 内部挂载 pack——正是会话入口所处的形态——并断言被组合行的 `subtree` 槽位被收回，因此 Loader 遍历绝不会把某个 Agent 的 pack 组合行报告为应用的 entry。
 
+[`packages/pack/pack-mount/tests/hooks-composition.spec.ts`](../../../../packages/pack/pack-mount/tests/hooks-composition.spec.ts) 补上了该保证中剩下的缺口。scope 探针用的是一行注册了桥接所用同一批监听器的 fixture，而不是桥接本身——桥接需要 `ctx.shell`、`sessionProjections` 与一个配置文件。本测试经由真实的本地提供方挂载真实的 `dsh-hooks-claude-code`，并运行真实的 shell hook：两个绑定了不同 pack 的目录各自只看到自己那个 pack 的 hooks，且只有已绑定的会话记录 `hook/invoked`/`hook/result` 这一对。组合行通过源码平面的模块映射解析，这是「必须在干净树上通过的 Loader 组合测试」在本仓库的既有做法，因此它同时也钉住了 `dsh-pack-local` 所写入的确切模块名。
+
 ## Deferred
 
 尚无测试启动一个已构建的 profile、在其中让 pack 生成的组合行按包名解析 `@deepseek-ai/dsh-pack-rules` 与 `@deepseek-ai/dsh-skill-filesystem`。挂载、组合行形状与 scope 保证各自都有覆盖，但那些模块名在真实组合中的解析属于 profile 级测试层，那一层会先构建 `lib/`。
 
-pack 的 `hooks/`、`commands/`、`agents/` 与 `mcp.json` 的加载器尚未构建；`dsh-pack-local` 只读取 `rules/` 与 `skills/`，因此今天把其余内容放进 pack 不会产生任何贡献。没有任何界面可以开启一个 pack：绑定是一次 API 调用，背后既没有 Remote 也没有浏览器页面。
+pack 的 `commands/`、`agents/` 与 `mcp.json` 的加载器尚未构建；`dsh-pack-local` 只读取 `rules/`、`skills/` 与 `hooks/hooks.json`，因此今天把其余内容放进 pack 不会产生任何贡献。pack 的 hooks 也只能抵达桥接所实现的那七个 Claude Code 事件。没有任何界面可以开启一个 pack：绑定是一次 API 调用，背后既没有 Remote 也没有浏览器页面。
